@@ -27,11 +27,11 @@ make analyze
 There are no third-party libraries to install. The program uses Apple's
 Foundation, IOKit, IOUSBHost, Security, ImageIO and CoreGraphics frameworks.
 The deployment target is macOS 14;
-older macOS releases and Intel Macs have not been tested. A deployment target
-is not a hardware compatibility claim.
+Physical scanning has only been tested on the Apple Silicon development Mac.
+A deployment target is not a hardware compatibility claim.
 
-The GitHub workflow is prepared to build and run software tests on Apple
-Silicon and Intel runners. It has not run remotely yet and cannot test a
+The GitHub workflow builds, runs sanitizer tests and analyzes the source on
+Apple Silicon and Intel runners; both jobs have passed. It cannot test a
 physical scanner.
 
 ## Hardware diagnostic

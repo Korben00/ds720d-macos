@@ -115,7 +115,8 @@ ownership, scanner errors and bounded waits against synthetic responses. Image
 tests compare decoded RGB pixel values, mirrored rear orientation, stripe
 boundaries across differently sized frames, DPI metadata, both forms of end of
 page, and rejection of malformed or incomplete captures. Build, sanitizer tests
-and static analysis pass locally. The real-sheet test establishes a first duplex
+and static analysis pass locally and in GitHub Actions on Apple Silicon and
+Intel. The real-sheet test establishes a first duplex
 scan on one Apple Silicon Mac with firmware 0.27, not broad compatibility,
 recovery reliability or production image quality. Document-rendering tests also
 check uneven gray paper, a different rear brightness, thin dark and faint print,
