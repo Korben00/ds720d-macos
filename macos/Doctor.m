@@ -36,7 +36,12 @@
 }
 - (void)device:(ICDevice *)device didCloseSessionWithError:(NSError *)error {(void)device;if(error)self.success=NO;self.done=YES;}
 @end
-int main(void){@autoreleasepool{
+int main(int argc,const char *argv[]){@autoreleasepool{
+    if(argc==2 && !strcmp(argv[1],"usb-probe")) {
+        NSError *error=nil;BOOL ok=ds_service_probe(&error);
+        printf("USB pipes (no scanner command): %s\n",ok?"ready":error.description.UTF8String?:"unavailable");return ok?0:1;
+    }
+    if(argc!=1){fprintf(stderr,"Usage: DS720DDoctor [usb-probe]\n");return 64;}
     NSError *error=nil;
     BOOL service=ds_service_ping(&error);
     printf("Signed USB service: %s\n",service?"ready":error.localizedDescription.UTF8String?:"unavailable");
@@ -48,6 +53,8 @@ int main(void){@autoreleasepool{
         ICScannerFunctionalUnit *unit=doctor.scanner.selectedFunctionalUnit;
         if(!doctor.success && doctor.scanner.hasOpenSession && unit.type==ICScannerFunctionalUnitTypeDocumentFeeder && [unit.supportedResolutions containsIndex:300]) {
             printf("Feeder: native %ldx%ld dpi; resolutions: %s; duplex: %s\n",(long)unit.nativeXResolution,(long)unit.nativeYResolution,unit.supportedResolutions.description.UTF8String,[(ICScannerFunctionalUnitDocumentFeeder *)unit supportsDuplexScanning]?"yes":"no");
+            ICScannerFunctionalUnitDocumentFeeder *feeder=(ICScannerFunctionalUnitDocumentFeeder *)unit;
+            printf("Geometry: physical %.3fx%.3f, document %.3fx%.3f, area %.3f,%.3f %.3fx%.3f, units=%lu, state=%lu, type=%lu, supported=%s\n",unit.physicalSize.width,unit.physicalSize.height,feeder.documentSize.width,feeder.documentSize.height,unit.scanArea.origin.x,unit.scanArea.origin.y,unit.scanArea.size.width,unit.scanArea.size.height,(unsigned long)unit.measurementUnit,(unsigned long)unit.state,(unsigned long)feeder.documentType,feeder.supportedDocumentTypes.description.UTF8String);
             doctor.success=YES;[doctor.scanner requestCloseSession];
         }
     }

@@ -16,7 +16,9 @@ ICA module.
 
 The service runs as root because IOUSBHost device capture requires root or a
 managed entitlement. Code signing by itself does not grant that entitlement.
-It exposes **ping, capture, cancel** only. Capture is fixed at 300 dpi RGB duplex
+It exposes **ping, usb-probe, capture, cancel** only. The optional USB probe opens
+and closes the two bulk pipes without sending scanner commands or moving paper.
+Capture is fixed at 300 dpi RGB duplex
 for one `04f9:60e2` scanner, bounded by time, bytes and frame count. No client
 may supply CDBs, memory addresses, shell commands, executable paths or output paths.
 Cancellation applies only to the requesting connection. Only one capture can run.
@@ -39,6 +41,10 @@ per-scan administrator authorization. An actual scan through ICA is still pendin
 `DS720DDoctor` checks detection/session readiness without scanning. Image Capture
 session opening and functional-unit parameter delivery are asynchronous; the
 diagnostic waits for readiness and resolutions before inspecting the feeder.
+`DS720DDoctor usb-probe` additionally verifies access through the installed root
+service without moving paper. USB ownership is surrendered without a device
+reset, so closing a transfer does not disconnect the ICA client. New interfaces
+created during configuration are re-enumerated for at most three seconds.
 `make build/DS720DICAScan-universal` builds an explicit hardware test client.
 Only its `scan /absolute/private/output-directory` command starts one duplex pass.
 No CI job executes that command.

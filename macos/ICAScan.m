@@ -62,6 +62,6 @@ int main(int argc,const char *argv[]){@autoreleasepool{
     NSDate *closeDeadline=[NSDate dateWithTimeIntervalSinceNow:2];
     while(!test.closed && [closeDeadline timeIntervalSinceNow]>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.1]];
     [browser stop];
-    if(!ok)fprintf(stderr,"ICA scan incomplete: %s; images=%lu, requested=%d, completed=%d.\n",test.failure.localizedDescription.UTF8String?:"timeout or missing pages",(unsigned long)test.images.count,test.requested,test.completed);
+    if(!ok)fprintf(stderr,"ICA scan incomplete: %s; images=%lu, requested=%d, completed=%d.\n",test.failure.description.UTF8String?:"timeout or missing pages",(unsigned long)test.images.count,test.requested,test.completed);
     return ok?0:1;
 }}

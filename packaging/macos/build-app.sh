@@ -5,6 +5,8 @@ DS_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 DS_VERSION=$(cat "$DS_ROOT/VERSION")
 [[ "$DS_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 64
 DS_SHORT=${DS_VERSION%%-*}
+DS_BUILD=1
+if [[ "$DS_VERSION" =~ -preview\.([0-9]+)$ ]]; then DS_BUILD=${BASH_REMATCH[1]}; fi
 DS_TEMP=$(mktemp -d /private/tmp/ds720d-app.XXXXXX)
 trap 'rm -rf "$DS_TEMP"' EXIT
 DS_APP="$DS_TEMP/DS-720D Scanner.app"
@@ -24,7 +26,7 @@ cat > "$DS_APP/Contents/Info.plist" <<PLIST
 <key>CFBundleExecutable</key><string>DS720DScanner</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$DS_SHORT</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleVersion</key><string>$DS_BUILD</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
@@ -62,7 +64,7 @@ cat > "$DS_ICA/Contents/Info.plist" <<PLIST
 <key>CFBundleExecutable</key><string>DS720DICA</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$DS_SHORT</string>
-<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleVersion</key><string>$DS_BUILD</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 </dict></plist>

@@ -3,6 +3,8 @@
 #import <xpc/xpc.h>
 #import "ServiceIdentity.h"
 #import "capture.h"
+#import "usb.h"
+#import <os/log.h>
 #include <stdatomic.h>
 #include <unistd.h>
 
@@ -44,13 +46,22 @@ static void acceptPeer(xpc_connection_t peer) {
             if(reply){xpc_dictionary_set_int64(reply,"protocol",1);xpc_connection_send_message(peer,reply);}
             return;
         }
-        if(strcmp(operation,"capture")){replyError(peer,message,"Unsupported operation.");return;}
+        BOOL probe=!strcmp(operation,"usb-probe");
+        if(!probe && strcmp(operation,"capture")){replyError(peer,message,"Unsupported operation.");return;}
         bool expected=false;
         if(!atomic_compare_exchange_strong(&busy,&expected,true)){replyError(peer,message,"Scanner busy.");return;}
         xpc_object_t reply=xpc_dictionary_create_reply(message);
         if(!reply){atomic_store(&busy,false);return;}
         job.cancelled=NO;
         dispatch_async(worker,^{@autoreleasepool {
+            if(probe) {
+                // Fixed operation: open the two USB pipes, then close. No scanner
+                // command, calibration, reservation, image read or motor start.
+                NSError *error=nil;DSUSB *usb=[DSUSB openScanner:&error];
+                if(!usb){os_log_error(OS_LOG_DEFAULT,"DS720D USB probe failed: %{public}@",error);xpc_dictionary_set_string(reply,"error",error.description.UTF8String?:"USB interface unavailable.");}
+                else {xpc_dictionary_set_bool(reply,"usb-ready",true);[usb close];}
+                xpc_connection_send_message(peer,reply);atomic_store(&busy,false);return;
+            }
             NSMutableData *raw=[NSMutableData data];__block NSString *failure=nil;
             int status=ds_acquire(^(NSDictionary *item){
                 if([item[@"event"] isEqual:@"frame"]) {
@@ -59,7 +70,7 @@ static void acceptPeer(xpc_connection_t peer) {
                     else [raw appendData:part];
                 } else if([item[@"event"] isEqual:@"error"])failure=item[@"message"];
             },^{return job.cancelled;});
-            if(status || job.cancelled || failure)xpc_dictionary_set_string(reply,"error",(failure?:@"Acquisition interrupted.").UTF8String);
+            if(status || job.cancelled || failure){os_log_error(OS_LOG_DEFAULT,"DS720D capture failed: %{public}@",failure?:@"Acquisition interrupted.");xpc_dictionary_set_string(reply,"error",(failure?:@"Acquisition interrupted.").UTF8String);}
             else xpc_dictionary_set_data(reply,"pixels",raw.bytes,raw.length);
             // No filesystem writes, arbitrary commands, paths or USB RPCs.
             xpc_connection_send_message(peer,reply);

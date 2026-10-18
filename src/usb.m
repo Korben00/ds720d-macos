@@ -53,21 +53,30 @@ static void setError(NSError **target, NSError *value) {
     if (!config) return nil;
     // Capture prevents the storage driver from reclaiming the scanner until close.
     if (![transport->_device configureWithValue:config->bConfigurationValue matchInterfaces:NO error:error]) return nil;
-    kr = IORegistryEntryCreateIterator(transport->_device.ioService, kIOServicePlane,
-        kIORegistryIterateRecursively, &iterator);
-    if (kr != KERN_SUCCESS) { setError(error, failure(kr, @"Cannot enumerate scanner interfaces.")); return nil; }
-    while ((service = IOIteratorNext(iterator))) {
-        if (IOObjectConformsTo(service, "IOUSBHostInterface")) {
-            transport->_interface = [[IOUSBHostInterface alloc] initWithIOService:service
-                options:IOUSBHostObjectInitOptionsNone queue:nil error:error interestHandler:nil];
+    // Reconfiguration terminates the previous interfaces. Enumerate afresh on
+    // each bounded retry instead of stopping at a disappearing registry entry.
+    NSError *interfaceError = nil;
+    NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + 3;
+    do {
+        kr = IORegistryEntryCreateIterator(transport->_device.ioService, kIOServicePlane,
+            kIORegistryIterateRecursively, &iterator);
+        if (kr != KERN_SUCCESS) { setError(error, failure(kr, @"Cannot enumerate scanner interfaces.")); return nil; }
+        while ((service = IOIteratorNext(iterator))) {
+            if (IOObjectConformsTo(service, "IOUSBHostInterface")) {
+                transport->_interface = [[IOUSBHostInterface alloc] initWithIOService:service
+                    options:IOUSBHostObjectInitOptionsNone queue:nil error:&interfaceError interestHandler:nil];
+            }
             IOObjectRelease(service);
-            break;
+            if (transport->_interface) break;
         }
-        IOObjectRelease(service);
-    }
-    IOObjectRelease(iterator);
+        IOObjectRelease(iterator);
+        if (transport->_interface) break;
+        if (interfaceError.code == (NSInteger)(int32_t)kIOReturnNotPrivileged ||
+            interfaceError.code == (NSInteger)(int32_t)kIOReturnNotPermitted) break;
+        usleep(100000);
+    } while (NSProcessInfo.processInfo.systemUptime < deadline);
     if (!transport->_interface) {
-        if (!error || !*error) setError(error, failure(3, @"Scanner USB interface unavailable after capture."));
+        setError(error, interfaceError ?: failure(3, @"Scanner USB interface unavailable after capture."));
         return nil;
     }
     const IOUSBInterfaceDescriptor *iface = transport->_interface.interfaceDescriptor;
@@ -147,7 +156,10 @@ static void setError(NSError **target, NSError *value) {
 - (void)close {
     _input = nil; _output = nil;
     [_interface destroy]; _interface = nil;
-    [_device destroy]; _device = nil;
+    // Normal capture destruction resets USB, disconnecting the ICA module
+    // before it can deliver its images. Surrender releases ownership without
+    // resetting the device or rematching its mass-storage driver.
+    [_device destroyWithOptions:IOUSBHostObjectDestroyOptionsDeviceSurrender]; _device = nil;
 }
 
 - (void)dealloc { [self close]; }

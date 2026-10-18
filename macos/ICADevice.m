@@ -9,6 +9,7 @@
 #import "packet.h"
 #include <unistd.h>
 #include <fcntl.h>
+#import <os/log.h>
 
 // The SDK callback table belongs to ICADevices, which launches this executable.
 @interface DSScannerState : NSObject
@@ -35,9 +36,10 @@ static NSDictionary *parameters(void) {
         @"ICAP_PIXELTYPE":choice(@2),@"ICAP_BITDEPTH":choice(@8),@"ICAP_UNITS":choice(@0),
         @"ICAP_XRESOLUTION":choice(@300),@"ICAP_YRESOLUTION":choice(@300),
         @"ICAP_XNATIVERESOLUTION":one(@300),@"ICAP_YNATIVERESOLUTION":one(@300),
-        @"ICAP_PHYSICALWIDTH":one(@2592),@"ICAP_PHYSICALHEIGHT":one(@4335),
+        @"ICAP_PHYSICALWIDTH":one(@(2592.0/300)),@"ICAP_PHYSICALHEIGHT":one(@(4335.0/300)),
         @"ICAP_XSCALING":one(@1),@"ICAP_YSCALING":one(@1),
-        @"ICAP_SUPPORTEDSIZES":choice(@0),@"supportsProgressNotificationsWithScanData":@YES};
+        @"ICAP_SUPPORTEDSIZES":@{@"type":@"TWON_ENUMERATION",@"value":@[@1,@3,@4],@"current":@0,@"default":@0},
+        @"supportsProgressNotificationsWithScanData":@YES};
 }
 static ICAError openUSB(UInt32 location,ScannerObjectInfo *info) {
     if(!location) {
@@ -145,7 +147,7 @@ static ICAError scan(const ScannerObjectInfo *info,ICD_ScannerStartPB *pb){
     if(s.scanning)return kICAIOPendingErr;s.scanning=YES;
     ICAError result=noErr;NSError *error=nil;
     NSData *raw=ds_service_capture(&error);
-    if(!raw)result=kICACommunicationErr;
+    if(!raw){os_log_error(OS_LOG_DEFAULT,"DS720D acquisition failed: %{public}@",error);result=kICACommunicationErr;}
     for(unsigned side=0;raw && side<(s.duplex?2u:1u) && !result;side++) {
         struct ds_document page;
         if(!ds_raster_side(raw.bytes,raw.length,side,true,&page)){result=kICAFileCorruptedErr;break;}
