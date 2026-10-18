@@ -5,18 +5,20 @@ DS-720D**, with a native macOS application/ICA module and a Linux SANE backend.
 The current development host
 is Apple Silicon running macOS 27.0.1.
 
-**Experimental prototype:** a real duplex sheet was acquired on the development
+**Experimental preview:** a real duplex sheet was acquired on the development
 Mac on 18 October 2026. Both faces contain legible text in 300 dpi RGB PNGs;
 the rear sensor's mirrored image is corrected during decoding. Native USB
 access, scanner identification and end-of-page detection worked on this device.
 Document rendering now removes the dark scanner borders and balances the paper
 background independently on each face. The result has been checked visually on
 the captured sheet. Raw RGB remains available. This is not a production scanning
-release: recovery, distribution and wider hardware testing remain unfinished.
+release: paper-error recovery and wider hardware testing remain unfinished.
 
 The installed macOS driver uses a fixed signed USB service. Service access,
-ICA device detection and its 300 dpi duplex feeder capabilities have been verified
-without per-scan administrator prompts; an actual acquisition through ICA is pending.
+ICA device detection and one complete 300 dpi RGB duplex acquisition have been
+verified without per-scan administrator prompts. The installer and DMG are
+Developer ID signed, notarized by Apple and stapled. Only USB preparation runs
+as root; acquisition and image processing run in the user's GUI session.
 Linux builds use libusb and SANE; Linux hardware scanning is unverified.
 See [macOS installation and signing](docs/macos-installation.md) and
 [Linux installation](docs/linux.md) for current scope and build instructions.
@@ -123,6 +125,7 @@ for the distinction between observed facts and unverified behavior.
 
 Readable duplex PNG acquisition and document cleanup have passed one real-sheet
 test. Repeated scans, calibrated color, cancellation, disconnection, missing paper
-and recovery still need validation. The installed macOS integration, notarized
-distribution and physical Linux USB path require further verification. Scans, personal document
+and recovery still need validation. Native ICA PNG output has passed a real duplex
+test on macOS 27.0.1 / Apple Silicon. Intel macOS and Linux AMD64/ARM64 have passed
+build and software tests; the physical Linux USB path remains unverified. Scans, personal document
 data, vendor binaries and local research files are excluded from this repository.

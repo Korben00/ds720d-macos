@@ -47,7 +47,12 @@ It delivers image bands for memory-based clients and ImageIO files for file-base
 clients. It does not offer an overview pass. On the development Mac, installation,
 authenticated service access, ICA enumeration, opening a scanner session and
 reading the feeder's 300 dpi/duplex capabilities have been verified without
-per-scan administrator authorization. An actual scan through ICA is still pending.
+per-scan administrator authorization. On 18 October 2026, one complete duplex
+pass through ImageCaptureCore produced two readable, correctly oriented PNGs
+at 300 dpi on macOS 27.0.1 / Apple Silicon, using the installed preview.3 module
+and service as user UID 501. The pages measured 2463×3478 and 2464×3478 pixels
+after cleanup. No administrator authorization API is called in that scan path.
+This is one successful hardware pass, not validation of every error or format.
 
 `DS720DDoctor` checks detection/session readiness without scanning. Image Capture
 session opening and functional-unit parameter delivery are asynchronous; the
@@ -71,6 +76,8 @@ DS_SIGN_IDENTITY='Developer ID Application: …' make dmg
 For distribution, also provide `DS_INSTALLER_IDENTITY` with a **Developer ID
 Installer** certificate and `DS_NOTARY_PROFILE` with an existing `notarytool`
 keychain profile. A Mac App Store installer certificate is a different identity.
+With that profile set, the build notarizes and staples the installer before
+putting it into the DMG, then notarizes and staples the DMG itself.
 Never put keys, passwords or notarization credentials in the repository.
 Without those optional settings the applications and DMG can be signed, but the
 installer package is unsigned and the DMG has no notarization ticket. Such a

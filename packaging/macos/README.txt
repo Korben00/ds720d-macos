@@ -24,9 +24,10 @@ Developer ID. Aucune commande système, chemin de fichier ou commande USB
 arbitraire n’est accepté. Il prépare uniquement la connexion USB. L’acquisition
 et le traitement des images restent dans ta session.
 
-Le moteur a produit un scan recto verso réel sur Apple Silicon. L’intégration
-Transfert d’images, les erreurs de papier, la déconnexion et l’annulation
-demandent encore des tests matériels. Utilise des feuilles de test ordinaires.
+Le moteur et le module Transfert d’images ont produit un scan recto verso réel
+à 300 dpi sur Apple Silicon, avec macOS 27.0.1. Les erreurs de papier, la
+déconnexion et l’annulation demandent encore des tests matériels. Utilise des
+feuilles de test ordinaires.
 
 Code source et mises à jour : https://github.com/Korben00/ds720d-macos
 Licence MIT. Aucune bibliothèque ni aucun pilote constructeur n’est embarqué.

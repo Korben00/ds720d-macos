@@ -37,4 +37,12 @@ if [[ -n ${DS_INSTALLER_IDENTITY:-} ]]; then
 else
     productbuild --distribution "$DS_TEMP/distribution.xml" --package-path "$DS_TEMP" "$DS_TEMP/DS720DScanner.pkg"
 fi
+if [[ -n ${DS_NOTARY_PROFILE:-} ]]; then
+    [[ -n ${DS_INSTALLER_IDENTITY:-} ]] || { printf 'Package notarization requires a Developer ID Installer identity.\n' >&2; exit 1; }
+    xcrun notarytool submit "$DS_TEMP/DS720DScanner.pkg" --keychain-profile "$DS_NOTARY_PROFILE" --wait
+    xcrun stapler staple "$DS_TEMP/DS720DScanner.pkg"
+    xcrun stapler validate "$DS_TEMP/DS720DScanner.pkg"
+fi
 cp "$DS_TEMP/DS720DScanner.pkg" "$DS_ROOT/dist/DS720DScanner-$DS_VERSION-macos-universal.pkg"
+DS_PKG_NAME="DS720DScanner-$DS_VERSION-macos-universal.pkg"
+(cd "$DS_ROOT/dist" && shasum -a 256 "$DS_PKG_NAME" > "$DS_PKG_NAME.sha256")
