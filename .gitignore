@@ -1,4 +1,5 @@
 build/
+dist/
 captures/
 .DS_Store
 *.dSYM/

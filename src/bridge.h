@@ -5,6 +5,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface DSBridge : NSObject
 - (instancetype)initWithTransport:(id<DSCommandTransport>)transport;
 @property NSTimeInterval readyTimeout;
+@property (copy, nullable) BOOL (^cancelled)(void);
 - (BOOL)identifyTransport:(NSError * _Nullable * _Nullable)error;
 - (nullable NSData *)prepareLight:(NSError * _Nullable * _Nullable)error;
 - (nullable NSDictionary *)imageMemoryDiagnostic:(NSError * _Nullable * _Nullable)error;

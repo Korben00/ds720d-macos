@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Version</key><string>1.0</string>
+<key>usb</key><dict><key>IOUSBDevice</key><array><dict>
+<key>idVendor</key><string>0x04f9</string>
+<key>idProduct</key><string>0x60e2</string>
+<key>Product Identification</key><string>Brother DS-720D</string>
+<key>device type</key><string>scanner</string>
+</dict></array></dict>
+</dict></plist>

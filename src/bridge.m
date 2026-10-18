@@ -22,6 +22,9 @@ static void setError(NSError **target, NSError *value) {
 
 - (NSData *)exchangeGroup:(uint8_t)group action:(uint8_t)action channel:(uint8_t)channel
                     read:(NSUInteger)read output:(NSData *)output error:(NSError **)error {
+    if(self.cancelled && self.cancelled()) {
+        setError(error,bridgeError(16,@"Acquisition cancelled or timed out."));return nil;
+    }
     uint8_t cdb[16];
     ds_novatek_cdb(cdb, group, action, channel, (uint32_t)(read ? read : output.length));
     NSData *reply = [_transport executeCDB:[NSData dataWithBytes:cdb length:16]
@@ -65,8 +68,12 @@ static void setError(NSError **target, NSError *value) {
 }
 
 - (BOOL)releaseClaim:(NSError **)error {
+    BOOL (^cancelled)(void)=self.cancelled;
+    self.cancelled=nil;
     BOOL value = NO;
-    if (![self waitReady:error] || ![self service:6 value:&value error:error]) return NO;
+    BOOL success=[self waitReady:error] && [self service:6 value:&value error:error];
+    self.cancelled=cancelled;
+    if(!success)return NO;
     if (!value) { setError(error, bridgeError(6, @"Scanner firmware refused to release its transaction lock.")); return NO; }
     return YES;
 }
@@ -166,6 +173,9 @@ static void setError(NSError **target, NSError *value) {
     NSMutableData *result = [NSMutableData dataWithCapacity:length];
     BOOL success = YES;
     for (uint32_t offset=0; offset<length;) {
+        if(self.cancelled && self.cancelled()) {
+            setError(error,bridgeError(16,@"Acquisition cancelled or timed out."));return nil;
+        }
         uint32_t chunk = MIN(65536u, length-offset);
         uint8_t cdb[16] = {0xc3,7};
         ds_write_be32(cdb+2,address+offset); ds_write_be32(cdb+6,chunk);

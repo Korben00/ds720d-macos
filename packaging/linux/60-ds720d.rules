@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: MIT
+# Only the Brother DS-720D. uaccess grants the active local session access.
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="04f9", ATTR{idProduct}=="60e2", MODE="0660", GROUP="scanner", TAG+="uaccess"

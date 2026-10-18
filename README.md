@@ -1,7 +1,8 @@
-# DS-720D for macOS
+# DS-720D for macOS and Linux
 
 An independent, MIT-licensed native driver project for the **Brother DSmobile
-DS-720D**, starting with a command-line interface. The current development host
+DS-720D**, with a native macOS application/ICA module and a Linux SANE backend.
+The current development host
 is Apple Silicon running macOS 27.0.1.
 
 **Experimental prototype:** a real duplex sheet was acquired on the development
@@ -12,6 +13,12 @@ Document rendering now removes the dark scanner borders and balances the paper
 background independently on each face. The result has been checked visually on
 the captured sheet. Raw RGB remains available. This is not a production scanning
 release: recovery, distribution and wider hardware testing remain unfinished.
+
+The installed macOS driver uses a fixed signed USB service, avoiding per-scan
+administrator prompts. Its ICA integration still needs an installed hardware
+test. Linux builds use libusb and SANE; Linux hardware scanning is unverified.
+See [macOS installation and signing](docs/macos-installation.md) and
+[Linux installation](docs/linux.md) for current scope and build instructions.
 
 ## Build and test
 
@@ -90,9 +97,9 @@ changes the original capture file and does not move the paper feed.
 See [document rendering](docs/document-rendering.md) for the algorithm and limits.
 
 `authorize-inspect` performs bounded diagnostics without starting the feed.
-The authorization helper is development-only and uses Apple's deprecated
-`AuthorizationExecuteWithPrivileges`; a supported distribution mechanism remains
-to be designed. No helper is installed permanently.
+The one-shot authorization command is development-only and uses Apple's deprecated
+`AuthorizationExecuteWithPrivileges`. The installed GUI and ICA module instead use
+the narrowly scoped USB service described in the installation documentation.
 
 Earlier experiments produced corrupted images and one stopped a sheet halfway.
 Cancellation, timeout cleanup, disconnection and jam recovery are not yet
@@ -104,7 +111,8 @@ cable with no sheet inserted. The program does not clear a foreign firmware lock
 
 All source code in this repository is an original implementation under the
 [MIT license](LICENSE). It does not link to or distribute a Brother driver,
-SANE backend, firmware image, or other manufacturer's binary. Interoperability
+firmware image, or other manufacturer's binary. Linux uses the public SANE API
+and system libusb/libpng dependencies. Interoperability
 research uses USB descriptors, Apple's SDK documentation, and protocol facts
 identified by local inspection and emulation of parameter preparation in the
 official Linux package. See [protocol notes](docs/protocol.md)
@@ -114,6 +122,6 @@ for the distinction between observed facts and unverified behavior.
 
 Readable duplex PNG acquisition and document cleanup have passed one real-sheet
 test. Repeated scans, calibrated color, cancellation, disconnection, missing paper
-and recovery still need validation. PDF output, signing/distribution and integration
-with macOS scanning applications remain future work. Scans, personal document
+and recovery still need validation. The installed macOS integration, notarized
+distribution and physical Linux USB path require further verification. Scans, personal document
 data, vendor binaries and local research files are excluded from this repository.

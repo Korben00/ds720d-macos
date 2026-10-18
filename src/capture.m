@@ -52,12 +52,13 @@ int ds_inspect(void) {
     [usb close];return before?0:1;
 }
 
-int ds_capture(void) {
-    alarm(180);
+int ds_acquire(void (^event)(NSDictionary *), BOOL (^cancelled)(void)) {
     NSError *error=nil;
     DSUSB *usb=[DSUSB openScanner:&error];
     if(!usb){event(@{@"event":@"error",@"message":error.description});return 1;}
     DSBridge *bridge=[[DSBridge alloc] initWithTransport:usb];
+    NSTimeInterval jobDeadline=NSProcessInfo.processInfo.systemUptime+150;
+    bridge.cancelled=^BOOL{return (cancelled && cancelled()) || NSProcessInfo.processInfo.systemUptime>jobDeadline;};
     if(![bridge identifyTransport:&error]){event(@{@"event":@"error",@"message":error.description});[usb close];return 1;}
     NSData *identity=[bridge inquiry:&error];
     if(!identity || identity.length<36 || memcmp((const uint8_t *)identity.bytes+8,"BROTHER ",8) ||
@@ -109,6 +110,8 @@ int ds_capture(void) {
         }
         if(!success && !error)error=[NSError errorWithDomain:@"DS720D.Capture" code:3 userInfo:@{NSLocalizedDescriptionKey:@"Capture reached its safety limit before the scanner reported end of page."}];
     } @finally {
+        // Cancellation stops acquisition but must not suppress STOP/RELEASE.
+        bridge.cancelled=nil;
         NSError *cleanup=nil;
         if(error) {
             uint8_t request[10]={3,0,0,0,22};
@@ -122,4 +125,8 @@ int ds_capture(void) {
         event(@{@"event":@"done",@"success":@(success),@"frames":@(frames),@"bytes":@(total)});
     }
     return success?0:1;
+}
+
+int ds_capture(void) {
+    return ds_acquire(^(NSDictionary *item){event(item);},nil);
 }

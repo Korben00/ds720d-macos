@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-static int authorize(const char *executable, BOOL scan, BOOL inspect) {
+static int authorize(const char *executable, BOOL scan, BOOL inspect, NSString *destination) {
     char binary[PATH_MAX];
     if (!realpath(executable, binary)) return 1;
     AuthorizationRef authorization = NULL;
@@ -22,7 +22,7 @@ static int authorize(const char *executable, BOOL scan, BOOL inspect) {
     FILE *capture=NULL;
     if(scan) {
         NSString *project=[[@(binary) stringByDeletingLastPathComponent] stringByDeletingLastPathComponent];
-        NSString *directory=[project stringByAppendingPathComponent:@"captures"];
+        NSString *directory=destination?:[project stringByAppendingPathComponent:@"captures"];
         NSError *error=nil;
         if(![NSFileManager.defaultManager createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&error])return 1;
         NSString *name=[NSString stringWithFormat:@"duplex-%.0f-%d.jsonl",NSDate.date.timeIntervalSince1970,getpid()];
@@ -32,6 +32,8 @@ static int authorize(const char *executable, BOOL scan, BOOL inspect) {
         capture=fdopen(fd,"w");
         if(!capture){close(fd);return 1;}
         printf("CAPTURE %s\n",path.fileSystemRepresentation);fflush(stdout);
+        NSData *location=[NSJSONSerialization dataWithJSONObject:@{@"event":@"capture-file",@"path":path} options:0 error:NULL];
+        fwrite(location.bytes,1,location.length,stdout);putchar('\n');fflush(stdout);
     }
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -65,6 +67,11 @@ static int authorize(const char *executable, BOOL scan, BOOL inspect) {
     return status == errAuthorizationSuccess && success ? 0 : 1;
 }
 
-int ds_authorize_probe(const char *executable) { return authorize(executable,NO,NO); }
-int ds_authorize_scan(const char *executable) { return authorize(executable,YES,NO); }
-int ds_authorize_inspect(const char *executable) { return authorize(executable,NO,YES); }
+int ds_authorize_probe(const char *executable) { return authorize(executable,NO,NO,nil); }
+int ds_authorize_scan(const char *executable) { return authorize(executable,YES,NO,nil); }
+int ds_authorize_scan_to(const char *executable,const char *directory) {
+    NSString *path=[[NSString alloc] initWithUTF8String:directory];
+    if(!path.isAbsolutePath){fprintf(stderr,"Capture directory must be an absolute path.\n");return 64;}
+    return authorize(executable,YES,NO,path);
+}
+int ds_authorize_inspect(const char *executable) { return authorize(executable,NO,YES,nil); }

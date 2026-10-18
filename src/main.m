@@ -153,6 +153,7 @@ int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if(argc==2 && !strcmp(argv[1],"authorize-probe"))return ds_authorize_probe(argv[0]);
         if(argc==2 && !strcmp(argv[1],"authorize-scan"))return ds_authorize_scan(argv[0]);
+        if(argc==4 && !strcmp(argv[1],"authorize-scan") && !strcmp(argv[2],"--output-dir"))return ds_authorize_scan_to(argv[0],argv[3]);
         if(argc==2 && !strcmp(argv[1],"authorize-inspect"))return ds_authorize_inspect(argv[0]);
         if(argc==2 && !strcmp(argv[1],"inspect"))return ds_inspect();
         if(argc==2 && !strcmp(argv[1],"capture"))return ds_capture();
@@ -186,6 +187,7 @@ int main(int argc, const char *argv[]) {
             return 0;
         }
         fprintf(stderr, "Usage: ds720d list | authorize-probe | authorize-inspect | authorize-scan\n"
+            "       ds720d authorize-scan --output-dir DIRECTORY\n"
             "       ds720d decode CAPTURE.jsonl [--raw]\n"
             "       ds720d probe | inspect | capture | probe-scsi | probe-usb\n");
         return 64;

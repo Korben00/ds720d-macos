@@ -1,0 +1,7 @@
+#!/bin/bash
+# SPDX-License-Identifier: MIT
+set -euo pipefail
+# Only this driver's fixed launchd job. A missing previous job is normal.
+/bin/launchctl bootout system/info.korben.ds720d.usb 2>/dev/null || true
+/bin/launchctl bootstrap system /Library/LaunchDaemons/info.korben.ds720d.usb.plist
+exit 0
