@@ -31,8 +31,17 @@ in a signed distribution build. Processing and file creation run as the user.
 
 The ICA module advertises a 300 dpi RGB document feeder with optional duplex.
 It delivers image bands for memory-based clients and ImageIO files for file-based
-clients. It does not offer an overview pass. Current physical validation covers
-the native acquisition engine; installed ICA behavior still requires verification.
+clients. It does not offer an overview pass. On the development Mac, installation,
+authenticated service access, ICA enumeration, opening a scanner session and
+reading the feeder's 300 dpi/duplex capabilities have been verified without
+per-scan administrator authorization. An actual scan through ICA is still pending.
+
+`DS720DDoctor` checks detection/session readiness without scanning. Image Capture
+session opening and functional-unit parameter delivery are asynchronous; the
+diagnostic waits for readiness and resolutions before inspecting the feeder.
+`make build/DS720DICAScan-universal` builds an explicit hardware test client.
+Only its `scan /absolute/private/output-directory` command starts one duplex pass.
+No CI job executes that command.
 
 ## Build and sign
 
@@ -48,6 +57,15 @@ Never put keys, passwords or notarization credentials in the repository.
 Without those optional settings the applications and DMG can be signed, but the
 installer package is unsigned and the DMG has no notarization ticket. Such a
 development build is not a finished Gatekeeper-ready release.
+
+If a notarization profile is not configured, run
+`packaging/macos/configure-notary.command` locally. It obtains the team ID from
+the installed app and asks for the Apple ID. Apple's tool prompts for an
+app-specific password directly in Terminal and stores it in Keychain under
+`ds720d-notary-TEAMID`. The script does not read or export the password.
+A Developer ID Installer identity remains separately necessary to sign the pkg:
+see Apple's [certificate creation](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/)
+and [CSR instructions](https://developer.apple.com/help/account/certificates/create-a-certificate-signing-request/).
 
 Packaging signs inside a temporary directory outside File Provider storage,
 then copies only the selected deliverables into `build/` and `dist/`. No scan,

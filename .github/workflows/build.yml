@@ -15,7 +15,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build native executable
-        run: make all build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal build/DS720DDoctor-universal
+        run: make all build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal build/DS720DDoctor-universal build/DS720DICAScan-universal
       - name: Test transport, duplex decoding and document rendering
         run: make test
       - name: Analyze native source

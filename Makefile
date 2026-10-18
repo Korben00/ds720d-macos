@@ -31,6 +31,10 @@ build/DS720DDoctor-universal: macos/Doctor.m macos/ServiceClient.m macos/Service
 	@mkdir -p build
 	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/Doctor.m macos/ServiceClient.m -framework Foundation -framework ImageCaptureCore -framework Security -o $@
 
+build/DS720DICAScan-universal: macos/ICAScan.m
+	@mkdir -p build
+	$(CC) $(CFLAGS) -arch arm64 -arch x86_64 -fobjc-arc macos/ICAScan.m -framework Foundation -framework ImageCaptureCore -o $@
+
 .PHONY: app pkg dmg
 app: build/ds720d-universal build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal build/DS720DDoctor-universal
 	./packaging/macos/build-app.sh
@@ -83,4 +87,4 @@ test: build/packet_test build/bridge_test build/image_test build/document_test b
 
 analyze:
 	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 src/main.m src/usb.m src/bridge.m src/packet.c src/authorize.m src/capture.m src/image.m src/document.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror
-	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 -Isrc -Imacos macos/App.m macos/ICADevice.m macos/USBService.m macos/ServiceClient.m macos/Doctor.m src/raster.c src/engine.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror
+	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 -Isrc -Imacos macos/App.m macos/ICADevice.m macos/USBService.m macos/ServiceClient.m macos/Doctor.m macos/ICAScan.m src/raster.c src/engine.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror

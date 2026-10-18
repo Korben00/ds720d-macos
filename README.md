@@ -14,9 +14,10 @@ background independently on each face. The result has been checked visually on
 the captured sheet. Raw RGB remains available. This is not a production scanning
 release: recovery, distribution and wider hardware testing remain unfinished.
 
-The installed macOS driver uses a fixed signed USB service, avoiding per-scan
-administrator prompts. Its ICA integration still needs an installed hardware
-test. Linux builds use libusb and SANE; Linux hardware scanning is unverified.
+The installed macOS driver uses a fixed signed USB service. Service access,
+ICA device detection and its 300 dpi duplex feeder capabilities have been verified
+without per-scan administrator prompts; an actual acquisition through ICA is pending.
+Linux builds use libusb and SANE; Linux hardware scanning is unverified.
 See [macOS installation and signing](docs/macos-installation.md) and
 [Linux installation](docs/linux.md) for current scope and build instructions.
 

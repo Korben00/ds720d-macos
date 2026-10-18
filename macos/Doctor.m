@@ -6,6 +6,7 @@
 @interface Doctor : NSObject <ICDeviceBrowserDelegate,ICScannerDeviceDelegate>
 @property BOOL done;
 @property BOOL success;
+@property BOOL selected;
 @property ICScannerDevice *scanner;
 @end
 @implementation Doctor
@@ -19,16 +20,19 @@
 - (void)deviceBrowser:(ICDeviceBrowser *)browser didRemoveDevice:(ICDevice *)device moreGoing:(BOOL)more {(void)browser;(void)device;(void)more;}
 - (void)didRemoveDevice:(ICDevice *)device {(void)device;self.done=YES;}
 - (void)device:(ICDevice *)device didOpenSessionWithError:(NSError *)error {
+    (void)device;
     if(error){fprintf(stderr,"Open session: %s\n",error.localizedDescription.UTF8String);self.done=YES;return;}
+    puts("ICA session opened; waiting for device readiness.");
+}
+- (void)deviceDidBecomeReady:(ICDevice *)device {
+    if(self.selected)return;
+    self.selected=YES;
+    printf("ICA ready; functional units: %s\n",[(ICScannerDevice *)device availableFunctionalUnitTypes].description.UTF8String);
     [(ICScannerDevice *)device requestSelectFunctionalUnit:ICScannerFunctionalUnitTypeDocumentFeeder];
 }
 - (void)scannerDevice:(ICScannerDevice *)scanner didSelectFunctionalUnit:(ICScannerFunctionalUnit *)unit error:(NSError *)error {
-    if(error)fprintf(stderr,"Select feeder: %s\n",error.localizedDescription.UTF8String);
-    else {
-        printf("Feeder: native %ldx%ld dpi; resolutions: %s; duplex: %s\n",(long)unit.nativeXResolution,(long)unit.nativeYResolution,unit.supportedResolutions.description.UTF8String,[(ICScannerFunctionalUnitDocumentFeeder *)unit supportsDuplexScanning]?"yes":"no");
-        self.success=unit.type==ICScannerFunctionalUnitTypeDocumentFeeder && [unit.supportedResolutions containsIndex:300];
-    }
-    [scanner requestCloseSession];
+    (void)scanner;(void)unit;
+    if(error){fprintf(stderr,"Select feeder: %s\n",error.localizedDescription.UTF8String);self.done=YES;}
 }
 - (void)device:(ICDevice *)device didCloseSessionWithError:(NSError *)error {(void)device;if(error)self.success=NO;self.done=YES;}
 @end
@@ -39,7 +43,14 @@ int main(void){@autoreleasepool{
     Doctor *doctor=[Doctor new];ICDeviceBrowser *browser=[ICDeviceBrowser new];
     browser.delegate=doctor;browser.browsedDeviceTypeMask=ICDeviceTypeMaskScanner|ICDeviceLocationTypeMaskLocal;[browser start];
     NSDate *deadline=[NSDate dateWithTimeIntervalSinceNow:15];
-    while(!doctor.done && [deadline timeIntervalSinceNow]>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.1]];
+    while(!doctor.done && [deadline timeIntervalSinceNow]>0) {
+        [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.1]];
+        ICScannerFunctionalUnit *unit=doctor.scanner.selectedFunctionalUnit;
+        if(!doctor.success && doctor.scanner.hasOpenSession && unit.type==ICScannerFunctionalUnitTypeDocumentFeeder && [unit.supportedResolutions containsIndex:300]) {
+            printf("Feeder: native %ldx%ld dpi; resolutions: %s; duplex: %s\n",(long)unit.nativeXResolution,(long)unit.nativeYResolution,unit.supportedResolutions.description.UTF8String,[(ICScannerFunctionalUnitDocumentFeeder *)unit supportsDuplexScanning]?"yes":"no");
+            doctor.success=YES;[doctor.scanner requestCloseSession];
+        }
+    }
     if(doctor.scanner.hasOpenSession)[doctor.scanner requestCloseSession];[browser stop];
     if(!doctor.success)fprintf(stderr,"No working DS-720D ICA feeder found. Install the package, close other scan apps and reconnect USB.\n");
     // This diagnostic never requests a scan or sends USB commands.
