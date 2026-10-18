@@ -20,7 +20,8 @@ verified without per-scan administrator prompts. The installer and DMG are
 Developer ID signed, notarized by Apple and stapled. Only USB preparation runs
 as root; acquisition and image processing run in the user's GUI session.
 Linux builds use libusb and SANE. One real 300 dpi RGB duplex scan has passed
-in an Ubuntu ARM64 Tart VM through USB/IP; two feed pauses were observed.
+in an Ubuntu ARM64 Tart VM through USB/IP. A relay TCP delay was corrected;
+a follow-up duplex scan completed in 15.63 seconds with continuous feed.
 Direct USB on a physical Linux host and Linux AMD64 hardware remain unverified.
 See [macOS installation and signing](docs/macos-installation.md) and
 [Linux installation](docs/linux.md) for current scope and build instructions.
@@ -117,7 +118,8 @@ cable with no sheet inserted. The program does not clear a foreign firmware lock
 All source code in this repository is an original implementation under the
 [MIT license](LICENSE). It does not link to or distribute a Brother driver,
 firmware image, or other manufacturer's binary. Linux uses the public SANE API
-and system libusb/libpng dependencies. Interoperability
+and system libusb/libpng dependencies. The optional Tart test relay uses the
+MIT `usbip` library; it is not included in the driver packages. Interoperability
 research uses USB descriptors, Apple's SDK documentation, and protocol facts
 identified by local inspection and emulation of parameter preparation in the
 official Linux package. See [protocol notes](docs/protocol.md)

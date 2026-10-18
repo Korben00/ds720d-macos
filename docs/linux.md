@@ -46,11 +46,37 @@ visually checked for legible text, corrected orientation, paper cleanup and
 complete page content. Scanner identification also passed after the scan.
 The images and detailed logs contain private document data and stay local.
 
-Two feed pauses were observed during this roughly 52-second command. There
-was no scan failure or visible missing image band. The USB/IP relay is a
-possible throughput constraint, but the cause was not measured. Smooth feed,
-repeatability, direct Linux USB, AMD64 hardware and error recovery still need
-validation; this result does not establish those properties.
+Two feed pauses were observed during this roughly 52-second initial command.
+There was no scan failure or visible missing image band. The follow-up below
+identifies and corrects the relay bottleneck.
+
+### Feed-pause correction, same day
+
+A hardware-free benchmark reproduced a roughly 40 ms delay at the end of
+each 64 KiB response. Disabling Nagle on the host exporter alone did not fix
+it; setting `TCP_NODELAY` on the channel's **guest-side socket** did. On that
+socket, Nagle buffering and delayed TCP acknowledgments were delaying the
+last fragments before Linux could request the next scanner block.
+
+The retained comparison, with identical synthetic requests and payloads,
+measured 1.37 MiB/s before and 34.62 MiB/s after correction. Median 64 KiB
+response latency fell from 43.20 ms to 0.90 ms. The original pause-producing
+path could not drain scanner data quickly enough. The relay now disables
+Nagle on both channel endpoints and the exporter's accepted sockets. This
+matches the explicit `TCP_NODELAY` settings in the
+[Linux USB/IP tools](https://github.com/torvalds/linux/blob/master/tools/usb/usbip/src/usbip_network.c).
+No scanner acquisition parameters or Linux package binaries changed.
+
+A second physical duplex sheet scan with the corrected relay completed in
+**15.63 seconds**, exiting with status 0 and producing two complete RGB PNGs
+(2463×3481 and 2464×3477, both 300 dpi). The images were visually checked;
+the user confirmed complete ejection and continuous feed without either pause.
+The two commands used different test sheets; the controlled transport benchmark
+isolates the effect of the TCP correction.
+
+The [relay source and reproducible benchmark](../tools/tart/README.md) are
+retained in the repository. Direct Linux USB, AMD64 hardware, repeatability
+across more units and error recovery still need validation.
 
 ## Build
 

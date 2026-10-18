@@ -3,3 +3,5 @@ dist/
 captures/
 .DS_Store
 *.dSYM/
+tools/tart/usbip-host/target/
+__pycache__/

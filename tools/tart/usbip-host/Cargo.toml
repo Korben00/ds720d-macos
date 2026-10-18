@@ -1,0 +1,12 @@
+[package]
+name = "ds720d-tart-usbip"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+usbip = { git = "https://github.com/jiegec/usbip", rev = "5561aa4abf372f5d3eb05c65b1474a9489b735f8" }
+rusb = "0.9.4"
+tokio = { version = "1.22.0", features = ["rt-multi-thread", "macros", "net"] }
+env_logger = "0.11.7"
