@@ -10,6 +10,9 @@ The software tests simulate firmware and a SANE frontend. **A physical Linux
 scan has not yet been verified.** No Brother library is used. libusb and libpng
 are external system dependencies, with their own licenses.
 
+CI also installs each amd64/arm64 package on Ubuntu 22.04 and checks that the
+real SANE dynamic loader initializes the backend. There is no USB scanner in CI.
+
 ## Build
 
 On Ubuntu 22.04+ / Debian with the corresponding development packages:

@@ -83,4 +83,4 @@ test: build/packet_test build/bridge_test build/image_test build/document_test b
 
 analyze:
 	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 src/main.m src/usb.m src/bridge.m src/packet.c src/authorize.m src/capture.m src/image.m src/document.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror
-	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 -Isrc -Imacos macos/App.m macos/ICADevice.m macos/USBService.m macos/ServiceClient.m src/raster.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror
+	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 -Isrc -Imacos macos/App.m macos/ICADevice.m macos/USBService.m macos/ServiceClient.m macos/Doctor.m src/raster.c src/engine.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror

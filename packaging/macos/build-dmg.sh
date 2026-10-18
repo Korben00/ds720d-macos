@@ -23,5 +23,6 @@ if [[ -n ${DS_NOTARY_PROFILE:-} ]]; then
     xcrun stapler staple "$DS_DMG"
     xcrun stapler validate "$DS_DMG"
 fi
-shasum -a 256 "$DS_DMG" > "$DS_DMG.sha256"
+DS_DMG_NAME=$(basename "$DS_DMG")
+(cd "$DS_ROOT/dist" && shasum -a 256 "$DS_DMG_NAME" > "$DS_DMG_NAME.sha256")
 printf '%s\n' "$DS_DMG"
