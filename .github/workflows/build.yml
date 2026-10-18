@@ -15,7 +15,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build native executable
-        run: make all build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal
+        run: make all build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal build/DS720DDoctor-universal
       - name: Test transport, duplex decoding and document rendering
         run: make test
       - name: Analyze native source
@@ -44,6 +44,14 @@ jobs:
         run: make -C linux all test
       - name: Build architecture-specific Debian package
         run: ./packaging/linux/build-deb.sh
+      - name: Verify installed SANE loader without a scanner
+        run: |
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ./dist/*.deb
+          mkdir -p /tmp/ds720d-sane-config
+          printf 'ds720d\n' > /tmp/ds720d-sane-config/dll.conf
+          SANE_CONFIG_DIR=/tmp/ds720d-sane-config SANE_DEBUG_DLL=5 scanimage -L > /tmp/ds720d-loader.log 2>&1
+          cat /tmp/ds720d-loader.log
+          grep -F "backend 'ds720d' is version 1.0.1" /tmp/ds720d-loader.log
       - name: Keep Linux preview packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -27,8 +27,12 @@ build/DS720DUSBService-universal: macos/USBService.m macos/ServiceIdentity.h src
 	@mkdir -p build
 	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/USBService.m src/usb.m src/bridge.m src/capture.m src/packet.c -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -o $@
 
+build/DS720DDoctor-universal: macos/Doctor.m macos/ServiceClient.m macos/ServiceIdentity.h macos/ServiceClient.h
+	@mkdir -p build
+	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/Doctor.m macos/ServiceClient.m -framework Foundation -framework ImageCaptureCore -framework Security -o $@
+
 .PHONY: app pkg dmg
-app: build/ds720d-universal build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal
+app: build/ds720d-universal build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal build/DS720DDoctor-universal
 	./packaging/macos/build-app.sh
 
 pkg: app

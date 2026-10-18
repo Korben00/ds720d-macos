@@ -82,7 +82,7 @@ the raw capture privately in `captures/`; decoding creates front and back PNGs.
 The prototype currently supports this one acquisition configuration only.
 The default decoder renders documents with automatic paper cropping and local
 white balance. It retains color and 300 dpi resolution without resampling.
-PDF export is not implemented.
+The development CLI exports PNG; the ICA module also supports TIFF, JPEG and PDF.
 
 For photos, faint shading, colored paper or exact acquisition values, use raw
 rendering instead:

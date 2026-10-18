@@ -12,6 +12,7 @@ DS_IDENTITY=${DS_SIGN_IDENTITY:--}
 mkdir -p "$DS_APP/Contents/MacOS" "$DS_APP/Contents/Resources"
 cp "$DS_ROOT/build/ds720d-universal" "$DS_APP/Contents/MacOS/ds720d"
 cp "$DS_ROOT/build/DS720DScanner-universal" "$DS_APP/Contents/MacOS/DS720DScanner"
+cp "$DS_ROOT/build/DS720DDoctor-universal" "$DS_APP/Contents/MacOS/DS720DDoctor"
 cp "$DS_ROOT/LICENSE" "$DS_APP/Contents/Resources/LICENSE.txt"
 cat > "$DS_APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -36,10 +37,12 @@ xcrun clang -fobjc-arc -Wall -Wextra -Werror "$DS_ROOT/macos/make-icon.m" -frame
 "$DS_ROOT/build/make-icon" "$DS_ROOT/build/AppIcon.iconset"
 iconutil -c icns "$DS_ROOT/build/AppIcon.iconset" -o "$DS_APP/Contents/Resources/AppIcon.icns"
 if [[ "$DS_IDENTITY" == "-" ]]; then
+    codesign --force --sign - --identifier info.korben.ds720d.cli "$DS_APP/Contents/MacOS/DS720DDoctor"
     codesign --force --sign - --identifier info.korben.ds720d.cli "$DS_APP/Contents/MacOS/ds720d"
     codesign --force --sign - "$DS_APP/Contents/MacOS/DS720DScanner"
     codesign --force --sign - "$DS_APP"
 else
+    codesign --force --options runtime --timestamp --sign "$DS_IDENTITY" --identifier info.korben.ds720d.cli "$DS_APP/Contents/MacOS/DS720DDoctor"
     codesign --force --options runtime --timestamp --sign "$DS_IDENTITY" --identifier info.korben.ds720d.cli "$DS_APP/Contents/MacOS/ds720d"
     codesign --force --options runtime --timestamp --sign "$DS_IDENTITY" "$DS_APP/Contents/MacOS/DS720DScanner"
     codesign --force --options runtime --timestamp --sign "$DS_IDENTITY" "$DS_APP"

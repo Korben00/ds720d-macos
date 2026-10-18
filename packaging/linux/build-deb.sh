@@ -3,6 +3,8 @@
 set -eu
 DS_ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 DS_VERSION=$(cat "$DS_ROOT/VERSION")
+# Debian's tilde orders previews before the corresponding stable version.
+DS_DEB_VERSION=$(printf '%s' "$DS_VERSION" | sed 's/-/~/')
 DS_ARCH=$(dpkg --print-architecture)
 DS_TEMP=$(mktemp -d)
 trap 'rm -rf "$DS_TEMP"' EXIT
@@ -10,7 +12,7 @@ make -C "$DS_ROOT/linux" install DESTDIR="$DS_TEMP/package"
 mkdir -p "$DS_TEMP/package/DEBIAN" "$DS_ROOT/dist"
 cat > "$DS_TEMP/package/DEBIAN/control" <<CONTROL
 Package: ds720d-mit
-Version: $DS_VERSION
+Version: $DS_DEB_VERSION
 Architecture: $DS_ARCH
 Maintainer: DS720D contributors <noreply@github.com>
 Section: graphics
