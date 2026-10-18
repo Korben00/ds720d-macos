@@ -93,7 +93,7 @@ static void setError(NSError **target, NSError *value) {
     return result;
 }
 
-- (NSData *)scannerCommand:(NSData *)command inputLength:(NSUInteger)inputLength
+- (NSDictionary *)scannerResponse:(NSData *)command inputLength:(NSUInteger)inputLength
                     output:(NSData *)output error:(NSError **)error {
     if (command.length != 10 || inputLength > 65536 || output.length > 65526 ||
         (inputLength && output.length)) {
@@ -106,12 +106,45 @@ static void setError(NSError **target, NSError *value) {
     if (!reply) return nil;
     NSData *status = [self readChannel:1 length:4 error:error];
     if (!status) return nil;
-    uint32_t code = ds_read_le32(status.bytes);
-    if (code) {
+    return @{@"data":reply,@"status":@(ds_read_le32(status.bytes))};
+}
+
+- (NSData *)scannerCommand:(NSData *)command inputLength:(NSUInteger)inputLength
+                    output:(NSData *)output error:(NSError **)error {
+    NSDictionary *response=[self scannerResponse:command inputLength:inputLength output:output error:error];
+    if(!response)return nil;
+    uint32_t code=[response[@"status"] unsignedIntValue];
+    if (code && ((const uint8_t *)command.bytes)[0]!=0x03) {
         setError(error, bridgeError(code, [NSString stringWithFormat:@"Scanner command returned status 0x%08x.", code]));
         return nil;
     }
-    return reply;
+    return response[@"data"];
+}
+
+- (BOOL)identifyTransport:(NSError **)error {
+    NSData *magic=[self exchangeGroup:0xff action:2 channel:0 read:4 output:nil error:error];
+    if(!magic)return NO;
+    NSData *vendor=[self readChannel:3 length:2 error:error];
+    NSData *product=vendor?[self readChannel:4 length:2 error:error]:nil;
+    const uint8_t expectedVendor[]={0x04,0xf9},expectedProduct[]={0x60,0xe2};
+    if(!product)return NO;
+    if(memcmp(magic.bytes,"NOVA",4) || memcmp(vendor.bytes,expectedVendor,2) || memcmp(product.bytes,expectedProduct,2)) {
+        setError(error,bridgeError(14,@"Unexpected scanner bridge identity."));return NO;
+    }
+    return YES;
+}
+
+- (NSData *)prepareLight:(NSError **)error {
+    uint8_t read[10]={0x28,0,0xa0,0,0x0a,0x0d,0,0,2,0};
+    NSData *state=[self scannerCommand:[NSData dataWithBytes:read length:10] inputLength:2 output:nil error:error];
+    if(!state)return nil;
+    if(((const uint8_t *)state.bytes)[0]==0) {
+        uint8_t send[10]={0x2a,0,0xa0,0,0,0,0,0,1,0},on=1;
+        if(![self scannerCommand:[NSData dataWithBytes:send length:10] inputLength:0 output:[NSData dataWithBytes:&on length:1] error:error])return nil;
+    } else if(((const uint8_t *)state.bytes)[0]!=1) {
+        setError(error,bridgeError(15,@"Scanner illumination is not ready."));return nil;
+    }
+    return state;
 }
 
 - (NSData *)inquiry:(NSError **)error {
@@ -123,5 +156,82 @@ static void setError(NSError **target, NSError *value) {
     if (size < 36) { setError(error, bridgeError(8, @"Scanner inquiry is too short to identify the device.")); return nil; }
     command[4] = (uint8_t)size;
     return [self scannerCommand:[NSData dataWithBytes:command length:10] inputLength:size output:nil error:error];
+}
+
+- (NSData *)readImageMemory:(uint32_t)address length:(uint32_t)length error:(NSError **)error {
+    if (!length) return [NSData data];
+    if ((address & 3) || (length & 3) || address > UINT32_MAX - length || length > 1048576) {
+        setError(error, bridgeError(9, @"Invalid image buffer address, alignment or length.")); return nil;
+    }
+    NSMutableData *result = [NSMutableData dataWithCapacity:length];
+    BOOL success = YES;
+    for (uint32_t offset=0; offset<length;) {
+        uint32_t chunk = MIN(65536u, length-offset);
+        uint8_t cdb[16] = {0xc3,7};
+        ds_write_be32(cdb+2,address+offset); ds_write_be32(cdb+6,chunk);
+        NSData *data = [_transport executeCDB:[NSData dataWithBytes:cdb length:16]
+            inputLength:chunk output:nil error:error];
+        if (!data || data.length!=chunk) { success=NO; break; }
+        [result appendData:data]; offset+=chunk;
+    }
+    if (!success) { if(!error || !*error)setError(error,bridgeError(10,@"Short image memory transfer.")); return nil; }
+    return result;
+}
+
+- (NSDictionary *)imageMemoryDiagnostic:(NSError **)error {
+    // Read only the already-observed image ring; return counts, never document pixels.
+    NSData *data=[self readImageMemory:0x42e200 length:2592*80 error:error];
+    if(!data)return nil;
+    const uint8_t *p=data.bytes;
+    NSMutableArray *rows=[NSMutableArray array];NSUInteger nonzero=0;
+    for(unsigned y=0;y<80;y++) {
+        NSUInteger count=0;
+        for(unsigned x=0;x<2592;x++)count+=p[y*2592+x]!=0;
+        nonzero+=count;[rows addObject:@(count)];
+    }
+    return @{@"nonzero":@(nonzero),@"rows":rows};
+}
+
+- (NSArray *)imageMetadata:(NSError **)error {
+    NSData *data=[self readChannel:2 length:24 error:error];
+    if(!data)return nil;
+    const uint8_t *p=data.bytes;
+    NSMutableArray *words=[NSMutableArray array];
+    for(unsigned i=0;i<6;i++)[words addObject:@(ds_read_le32(p+4*i))];
+    return words;
+}
+
+- (NSDictionary *)imageBlock:(NSData *)command error:(NSError **)error {
+    if (command.length!=10 || ((const uint8_t *)command.bytes)[0]!=0x28) {
+        setError(error,bridgeError(11,@"Invalid image read command.")); return nil;
+    }
+    if (![self writeChannel:0 data:command error:error]) return nil;
+    NSTimeInterval deadline=NSProcessInfo.processInfo.systemUptime+15;
+    NSData *metadata=nil;
+    uint32_t words[6]={0};
+    do {
+        metadata=[self readChannel:2 length:24 error:error];
+        if(!metadata)return nil;
+        const uint8_t *p=metadata.bytes;
+        for(unsigned i=0;i<6;i++)words[i]=ds_read_le32(p+4*i);
+        if(words[0]!=0 && !(words[0]==1 && words[5]==0))break;
+        [NSThread sleepForTimeInterval:0.01];
+    } while(NSProcessInfo.processInfo.systemUptime<deadline);
+    if(words[0]!=1 && words[0]!=3) {
+        setError(error,bridgeError(12,[NSString stringWithFormat:@"Image metadata state %u (%u, %u).",words[0],words[1],words[2]]));return nil;
+    }
+    uint64_t length=(uint64_t)words[3]*words[4];
+    const uint8_t *cmd=command.bytes;
+    uint32_t requested=((uint32_t)cmd[6]<<16)|((uint32_t)cmd[7]<<8)|cmd[8];
+    if(length>1048576 || length>requested || words[3]>10000 || words[4]>10000 || (!length && words[0]!=3)) {
+        setError(error,bridgeError(13,@"Image block dimensions exceed the capture bounds."));return nil;
+    }
+    NSData *data=[self readImageMemory:words[5] length:(uint32_t)length error:error];
+    if(!data)return nil;
+    NSData *status=[self readChannel:1 length:4 error:error];
+    if(!status)return nil;
+    NSMutableArray *values=[NSMutableArray array];
+    for(unsigned i=0;i<6;i++)[values addObject:@(words[i])];
+    return @{@"words":values,@"data":data,@"status":@(ds_read_le32(status.bytes))};
 }
 @end

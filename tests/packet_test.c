@@ -36,6 +36,17 @@ int main(void) {
     uint8_t word[4];
     ds_write_be32(word, 0x12345678);
     assert(!memcmp(word, "\x12\x34\x56\x78", 4));
+    uint8_t window[79];
+    ds_native_window(window);
+    // Independent wire fixture: 300 dpi native RGB, full sensor, duplex.
+    const uint8_t native[79]={
+        0,0,0,0,0,0,0,71,
+        0,0,1,0x2c,1,0x2c,0,0,0,0,0,0,0,0,0,0,
+        0x28,0x80,0,0,0x43,0xbc,0x80,0x80,0x80,5,8,0,0,3,
+        0,0,0,0,0,0,0,0,0,0,0xff,0x1d,0xe0,0xff,0,
+        0x1e,0x60,0x21,0xde,0x10,0,0,0x64,0,0x64,0,0x64,
+        0x10,0,0,0,11,0,0,0,0,0,0,0,0,0};
+    assert(!memcmp(window,native,sizeof window));
     puts("USB packet framing: all checks passed.");
     return 0;
 }

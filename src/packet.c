@@ -55,3 +55,24 @@ void ds_novatek_cdb(uint8_t cdb[16], uint8_t group, uint8_t action,
     cdb[11] = action;
     cdb[12] = channel;
 }
+
+void ds_native_window(uint8_t out[79]) {
+    memset(out, 0, 79);
+    ds_write_be16(out + 6, 71);
+    uint8_t *d = out + 8;
+    ds_write_be16(d + 2, DS_NATIVE_DPI);
+    ds_write_be16(d + 4, DS_NATIVE_DPI);
+    ds_write_be32(d + 14, DS_NATIVE_WIDTH * 4); // 1/1200-inch units.
+    ds_write_be32(d + 18, 4335 * 4); // 14 inches plus rear sensor offset.
+    d[22] = d[23] = d[24] = 128;
+    d[25] = 5; d[26] = 8; // Native RGB, eight bits per component.
+    d[29] = 3;
+    d[40] = 0xff; d[41] = 0x1d; d[42] = 0xe0; d[43] = 0xff;
+    ds_write_be16(d + 45, DS_NATIVE_BPL);
+    ds_write_be16(d + 47, 4335 * 2);
+    d[49] = 0x10;
+    ds_write_be16(d + 51, 100); ds_write_be16(d + 53, 100);
+    ds_write_be16(d + 55, 100);
+    d[57] = 0x10; // Duplex source.
+    d[61] = 11; // Background rows, not a sheet count.
+}

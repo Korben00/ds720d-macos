@@ -4,11 +4,12 @@ An independent, MIT-licensed native driver project for the **Brother DSmobile
 DS-720D**, starting with a command-line interface. The current development host
 is Apple Silicon running macOS 27.0.1.
 
-**Development status:** native device discovery works on the connected DS-720D.
-USB packet handling and the scanner bridge state machine build and pass software
-tests. Exclusive USB access, the scanner inquiry, image acquisition, duplex
-decoding, and integration with macOS applications are still awaiting hardware
-validation. This is not yet a working scanning release.
+**Experimental prototype:** a real duplex sheet was acquired on the development
+Mac on 18 October 2026. Both faces contain legible text in 300 dpi RGB PNGs;
+the rear sensor's mirrored image is corrected during decoding. Native USB
+access, scanner identification and end-of-page detection worked on this device.
+The paper background is still gray, borders are retained, and color rendering
+needs further work. This is not a production scanning release.
 
 ## Build and test
 
@@ -22,7 +23,7 @@ make analyze
 ```
 
 There are no third-party libraries to install. The program uses Apple's
-Foundation, IOKit and IOUSBHost frameworks. The deployment target is macOS 14;
+Foundation, IOKit, IOUSBHost, Security, ImageIO and CoreGraphics frameworks. The deployment target is macOS 14;
 older macOS releases and Intel Macs have not been tested. A deployment target
 is not a hardware compatibility claim.
 
@@ -38,7 +39,9 @@ Connect exactly one DS-720D, close applications that might use it, then run:
 sudo ./build/ds720d probe
 ```
 
-Enter the administrator password in your own terminal. The program takes
+Alternatively, `./build/ds720d authorize-probe` requests a one-shot native macOS
+administrator authorization. Enter any password only in the macOS dialog or
+your own terminal. The program takes
 exclusive ownership of this USB device, reads its transport and scanner
 identities, then releases it. macOS can briefly remove and recreate the
 scanner's small virtual storage volume during capture. No kernel extension or
@@ -54,19 +57,46 @@ access in an independently built application.
 commands. `probe-scsi` reports whether the system SCSI interface is available.
 Neither diagnostic starts the paper feed.
 
+## Experimental duplex capture
+
+Insert one sheet printed on both sides, then run:
+
+```sh
+./build/ds720d authorize-scan
+./build/ds720d decode /absolute/path/to/the/reported/capture.jsonl
+```
+
+Capture requests native RGB at 300 dpi and reads image memory until the scanner
+reports end of page, with limits on time, frame count and total bytes. It saves
+the raw capture privately in `captures/`; decoding creates front and back PNGs.
+The prototype currently supports this one acquisition configuration only.
+It does not crop borders, normalize paper white or export PDF.
+
+`authorize-inspect` performs bounded diagnostics without starting the feed.
+The authorization helper is development-only and uses Apple's deprecated
+`AuthorizationExecuteWithPrivileges`; a supported distribution mechanism remains
+to be designed. No helper is installed permanently.
+
+Earlier experiments produced corrupted images and one stopped a sheet halfway.
+Cancellation, timeout cleanup, disconnection and jam recovery are not yet
+validated. Do not use valuable or fragile originals for prototype testing.
+If the scanner remains internally locked, disconnect and reconnect its USB
+cable with no sheet inserted. The program does not clear a foreign firmware lock.
+
 ## License and provenance
 
 All source code in this repository is an original implementation under the
 [MIT license](LICENSE). It does not link to or distribute a Brother driver,
 SANE backend, firmware image, or other manufacturer's binary. Interoperability
 research uses USB descriptors, Apple's SDK documentation, and protocol facts
-identified from the official Linux package. See [protocol notes](docs/protocol.md)
+identified by local inspection and emulation of parameter preparation in the
+official Linux package. See [protocol notes](docs/protocol.md)
 for the distinction between observed facts and unverified behavior.
 
 ## Release requirements
 
-Before calling the driver functional, validate exclusive access and scanner
-identity, obtain readable images from real sheets, verify both sides in duplex
-mode, and test cancellation, disconnection, missing paper, and recovery. PNG/PDF
-output and integration with macOS scanning applications are planned after the
-first real scan.
+Readable duplex PNG acquisition has passed one real-sheet test. Repeated scans,
+color and white-level handling, cancellation, disconnection, missing paper and
+recovery still need validation. PDF output, signing/distribution and integration
+with macOS scanning applications remain future work. Scans, personal document
+data, vendor binaries and local research files are excluded from this repository.

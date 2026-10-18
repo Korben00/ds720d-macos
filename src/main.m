@@ -9,6 +9,8 @@
 #import "usb.h"
 #import "packet.h"
 #import "bridge.h"
+#import "authorize.h"
+#import "capture.h"
 
 static BOOL isScanner(io_service_t service) {
     CFTypeRef vendor = IORegistryEntryCreateCFProperty(service, CFSTR("idVendor"), NULL, 0);
@@ -149,10 +151,17 @@ static int probeUSB(void) {
 
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
+        if(argc==2 && !strcmp(argv[1],"authorize-probe"))return ds_authorize_probe(argv[0]);
+        if(argc==2 && !strcmp(argv[1],"authorize-scan"))return ds_authorize_scan(argv[0]);
+        if(argc==2 && !strcmp(argv[1],"authorize-inspect"))return ds_authorize_inspect(argv[0]);
+        if(argc==2 && !strcmp(argv[1],"inspect"))return ds_inspect();
+        if(argc==2 && !strcmp(argv[1],"capture"))return ds_capture();
+        if(argc==3 && !strcmp(argv[1],"decode"))return ds_decode_capture(argv[2]);
         if (argc == 2 && strcmp(argv[1], "list") == 0) return listScanners();
         if (argc == 2 && strcmp(argv[1], "probe-scsi") == 0) return probeSCSI();
         if (argc == 2 && strcmp(argv[1], "probe-usb") == 0) return probeUSB();
         if (argc == 2 && strcmp(argv[1], "probe") == 0) {
+            alarm(90);
             NSError *error = nil;
             DSUSB *usb = [DSUSB openScanner:&error];
             if (!usb) { fprintf(stderr, "%s\n", error.description.UTF8String); return 1; }
@@ -175,7 +184,9 @@ int main(int argc, const char *argv[]) {
             if (!scanner) { fprintf(stderr, "%s\n", error.description.UTF8String); return 1; }
             return 0;
         }
-        fprintf(stderr, "Usage: ds720d list | probe | probe-scsi | probe-usb\n");
+        fprintf(stderr, "Usage: ds720d list | authorize-probe | authorize-inspect | authorize-scan\n"
+            "       ds720d decode CAPTURE.jsonl\n"
+            "       ds720d probe | inspect | capture | probe-scsi | probe-usb\n");
         return 64;
     }
 }

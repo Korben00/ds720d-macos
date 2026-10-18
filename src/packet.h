@@ -20,4 +20,7 @@ void ds_novatek_cdb(uint8_t cdb[16], uint8_t group, uint8_t action,
 uint32_t ds_read_le32(const uint8_t *bytes);
 void ds_write_be16(uint8_t *bytes, uint16_t value);
 void ds_write_be32(uint8_t *bytes, uint32_t value);
+enum { DS_NATIVE_DPI = 300, DS_NATIVE_WIDTH = 2592,
+       DS_NATIVE_BPL = DS_NATIVE_WIDTH * 3, DS_STRIPE_ROWS = 80 };
+void ds_native_window(uint8_t output[79]);
 #endif

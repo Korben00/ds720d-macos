@@ -1,8 +1,8 @@
 # DS-720D interoperability notes
 
 These notes describe wire-format facts used by an original implementation.
-They are not copied manufacturer source code. All vendor-specific behavior
-below still requires confirmation through actual USB exchanges.
+They are not copied manufacturer source code. Hardware observations and facts
+derived from local reference inspection are distinguished below.
 
 ## Observed on the development machine
 
@@ -45,8 +45,47 @@ does not forcibly clear another transaction.
 Channel zero carries a ten-byte scanner command followed by any output data,
 and receives scanner response data. Channel one returns a four-byte scanner
 status. Inquiry (`12`) first requests five bytes to learn the response length,
-then requests that many bytes, capped at 255. Image and mechanical commands
-are not implemented yet.
+then requests that many bytes, capped at 255. These exchanges, including the
+`BROTHER DS-720D` identity, have succeeded on the connected scanner.
+
+## Native image acquisition
+
+The working experimental sequence is unit ready (`00`), illumination preparation,
+calibration-format inspection, set window (`24`), reserve (`16`), start (`1b`,
+byte five `c0`), image reads (`28`), stop (`1b`, byte five zero), release (`17`).
+The observed calibration flags are `03`; the reference preparation path considers
+this state already calibrated. Other states are rejected before starting.
+
+The native window has an eight-byte header and a 71-byte descriptor. It selects
+300 dpi, 2592 pixels, eight-bit RGB (composition `05`), duplex, and a maximum
+4335 physical rows per face including the rear sensor offset. Even a grayscale
+request is expanded to RGB by reference parameter preparation. Direct grayscale
+requests in early experiments yielded sparse, banded data and a blank rear image.
+Compression fields at descriptor offsets 32 and 33 remain zero. Descriptor byte
+42 is `e0`; offset 61 is a background row count, not a sheet count.
+
+This model uses a memory image path rather than ordinary channel-zero image
+response data. After each image read command, channel two returns six
+little-endian 32-bit words. Words 3 and 4 multiply to the available byte length;
+word 5 is the image memory address. State 1 indicates data and state 3 end of
+page. Empty end-of-page frames have been observed. Memory reads use `c3 07`,
+with big-endian address at byte 2 and length at byte 6, in chunks up to 65536.
+They do not acquire an additional firmware transaction lock.
+
+In the successful RGB capture, metadata reported 2592 component bytes and
+240 component rows, totaling 622080 bytes per block. This is 80 physical RGB
+rows of 7776 bytes each, not 240 physical image rows. Each physical row contains
+separate R, G and B planes. Front and rear data alternate in 80-physical-row
+stripes; this alternation applies to the entire stream rather than USB transfer
+boundaries. The rear sensor is horizontally mirrored. All these layout facts
+were checked against the real decoded images.
+
+One complete capture contained 94 data blocks and one empty end-of-page block:
+58,475,520 bytes, decoded to two 2592-by-3760 RGB PNGs at 300 dpi. Both sides
+contain legible text. No captured pixels or identifying document contents are
+included in these notes. Exposure, white point, cropping and exact page alignment
+are not yet validated. A separate channel-zero streaming experiment was invalid
+for this configuration and stopped a sheet before it had cleared the feed.
 
 ## Evidence
 
@@ -55,8 +94,11 @@ The manufacturer package used for local protocol research is
 [Brother](https://download.brother.com/welcome/dlf100976/libsane-dsseries_1.0.5-1_amd64.deb).
 Its SHA-256 is
 `4e0b649df73f8e9900c045d5bbf7361fd32ca7e3dc18ca2723406fca66809927`.
-It was extracted for inspection, not installed or executed. Neither this
-package nor its disassembly belongs in the MIT source repository.
+It was extracted for inspection and selected parameter-preparation routines
+were emulated locally without USB access. It was not installed, linked into the
+driver, or run natively. Neither this package, its disassembly nor the research
+emulator belongs in the MIT source repository. The encoder and generic RGB
+decoder here are original code; only interoperability facts are recorded.
 
 Native capture behavior is documented in the local macOS SDK headers
 `IOUSBHostObject.h` and `IOUSBHostDefinitions.h`. The capture option requires
@@ -67,6 +109,10 @@ to refuse to run the executable. This project therefore does not add it.
 ## Verification boundary
 
 Software tests exercise packet corruption, short transfers, transaction
-ownership, scanner errors and bounded waits against synthetic responses.
-They do not prove hardware compatibility or successful scanning. The next
-acceptance gate is an administrator-run `ds720d probe` on the real scanner.
+ownership, scanner errors and bounded waits against synthetic responses. Image
+tests compare decoded RGB pixel values, mirrored rear orientation, stripe
+boundaries across differently sized frames, DPI metadata, both forms of end of
+page, and rejection of malformed or incomplete captures. Build, sanitizer tests
+and static analysis pass locally. The real-sheet test establishes a first duplex
+scan on one Apple Silicon Mac with firmware 0.27, not broad compatibility,
+recovery reliability or production image quality.
