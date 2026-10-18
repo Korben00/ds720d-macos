@@ -1,5 +1,7 @@
 CC = xcrun clang
 CFLAGS = -Wall -Wextra -Werror -O2 -g -mmacosx-version-min=14.0
+# Distributed binaries carry no debug stabs: those would embed the build host's source and object paths.
+RELEASE_CFLAGS = $(CFLAGS) -g0
 FRAMEWORKS = -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -framework ImageIO -framework CoreGraphics
 MAC_SOURCES = src/main.m src/usb.m src/packet.c src/bridge.m src/authorize.m src/capture.m src/image.m src/document.c
 MAC_ACQUISITION = src/usb.m src/bridge.m src/capture.m src/packet.c
@@ -15,27 +17,27 @@ build/ds720d: src/main.m src/usb.m src/usb.h src/packet.c src/packet.h src/bridg
 
 build/ds720d-universal: $(MAC_SOURCES) src/authorize.h src/capture.h src/document.h src/packet.h src/usb.h src/bridge.h src/transport.h
 	@mkdir -p build
-	$(CC) $(CFLAGS) -arch arm64 -arch x86_64 -fobjc-arc $(MAC_SOURCES) $(FRAMEWORKS) -o $@
+	$(CC) $(RELEASE_CFLAGS) -arch arm64 -arch x86_64 -fobjc-arc $(MAC_SOURCES) $(FRAMEWORKS) -o $@
 
 build/DS720DScanner-universal: macos/App.m macos/ServiceClient.m macos/ServiceClient.h macos/ServiceIdentity.h $(MAC_ACQUISITION) $(MAC_ACQUISITION_HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/App.m macos/ServiceClient.m $(MAC_ACQUISITION) -framework AppKit -framework UniformTypeIdentifiers -framework Security -framework IOKit -framework IOUSBHost -o $@
+	$(CC) $(RELEASE_CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/App.m macos/ServiceClient.m $(MAC_ACQUISITION) -framework AppKit -framework UniformTypeIdentifiers -framework Security -framework IOKit -framework IOUSBHost -o $@
 
 build/DS720DICA-universal: macos/ICADevice.m macos/ServiceClient.m macos/ServiceClient.h macos/ServiceIdentity.h src/raster.c src/raster.h src/document.c $(MAC_ACQUISITION) $(MAC_ACQUISITION_HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/ICADevice.m macos/ServiceClient.m $(MAC_ACQUISITION) src/raster.c src/document.c -framework Foundation -framework ICADevices -framework ImageCaptureCore -framework ImageIO -framework CoreGraphics -framework IOKit -framework IOUSBHost -framework Security -o $@
+	$(CC) $(RELEASE_CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/ICADevice.m macos/ServiceClient.m $(MAC_ACQUISITION) src/raster.c src/document.c -framework Foundation -framework ICADevices -framework ImageCaptureCore -framework ImageIO -framework CoreGraphics -framework IOKit -framework IOUSBHost -framework Security -o $@
 
 build/DS720DUSBService-universal: macos/USBService.m macos/ServiceIdentity.h src/usb.m src/usb.h src/packet.c src/packet.h
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/USBService.m src/usb.m src/packet.c -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -o $@
+	$(CC) $(RELEASE_CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/USBService.m src/usb.m src/packet.c -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -o $@
 
 build/DS720DDoctor-universal: macos/Doctor.m macos/ServiceClient.m macos/ServiceIdentity.h macos/ServiceClient.h $(MAC_ACQUISITION) $(MAC_ACQUISITION_HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/Doctor.m macos/ServiceClient.m $(MAC_ACQUISITION) -framework Foundation -framework ImageCaptureCore -framework Security -framework IOKit -framework IOUSBHost -o $@
+	$(CC) $(RELEASE_CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/Doctor.m macos/ServiceClient.m $(MAC_ACQUISITION) -framework Foundation -framework ImageCaptureCore -framework Security -framework IOKit -framework IOUSBHost -o $@
 
 build/DS720DICAScan-universal: macos/ICAScan.m
 	@mkdir -p build
-	$(CC) $(CFLAGS) -arch arm64 -arch x86_64 -fobjc-arc macos/ICAScan.m -framework Foundation -framework ImageCaptureCore -o $@
+	$(CC) $(RELEASE_CFLAGS) -arch arm64 -arch x86_64 -fobjc-arc macos/ICAScan.m -framework Foundation -framework ImageCaptureCore -o $@
 
 .PHONY: app pkg dmg
 app: build/ds720d-universal build/DS720DScanner-universal build/DS720DICA-universal build/DS720DUSBService-universal build/DS720DDoctor-universal

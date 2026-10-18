@@ -2,6 +2,8 @@ CC ?= cc
 CFLAGS ?= -O2 -g
 WARN = -std=c11 -Wall -Wextra -Werror
 CPPFLAGS += -I../src -I. $(shell pkg-config --cflags libusb-1.0 libpng)
+# Keep the build host's directory out of debug info and __FILE__.
+CPPFLAGS += -ffile-prefix-map=$(abspath ..)=.
 CORE = ../src/engine.c ../src/packet.c ../src/document.c ../src/raster.c usb_libusb.c
 PREFIX ?= /usr
 LIBDIR ?= $(PREFIX)/lib/$(shell $(CC) -dumpmachine)
