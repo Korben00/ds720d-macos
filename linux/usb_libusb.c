@@ -13,7 +13,8 @@ int ds_usb_count(void){
     libusb_device **devices=NULL;ssize_t n=libusb_get_device_list(context,&devices);int count=0;
     if(n<0)count=-1;
     for(ssize_t i=0;i<n;i++){struct libusb_device_descriptor d;if(!libusb_get_device_descriptor(devices[i],&d) && d.idVendor==0x04f9 && d.idProduct==0x60e2)count++;}
-    if(devices)libusb_free_device_list(devices,1);libusb_exit(context);return count;
+    if(devices)libusb_free_device_list(devices,1);
+    libusb_exit(context);return count;
 }
 struct ds_usb *ds_usb_open(char error[160]){
     struct ds_usb *usb=calloc(1,sizeof *usb);if(!usb)return NULL;atomic_init(&usb->cancelled,false);
@@ -21,7 +22,8 @@ struct ds_usb *ds_usb_open(char error[160]){
     libusb_device **devices=NULL;ssize_t n=libusb_get_device_list(usb->context,&devices);libusb_device *selected=NULL;int count=0;
     for(ssize_t i=0;i<n;i++){struct libusb_device_descriptor d;if(!libusb_get_device_descriptor(devices[i],&d) && d.idVendor==0x04f9 && d.idProduct==0x60e2){selected=devices[i];count++;}}
     result=count==1?libusb_open(selected,&usb->handle):LIBUSB_ERROR_NO_DEVICE;
-    if(devices)libusb_free_device_list(devices,1);if(result)goto fail;
+    if(devices)libusb_free_device_list(devices,1);
+    if(result)goto fail;
     struct libusb_config_descriptor *config=NULL;result=libusb_get_active_config_descriptor(libusb_get_device(usb->handle),&config);if(result)goto fail;
     bool found=false;
     for(unsigned i=0;i<config->bNumInterfaces;i++)for(int a=0;a<config->interface[i].num_altsetting;a++){

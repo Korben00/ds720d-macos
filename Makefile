@@ -64,13 +64,18 @@ build/engine_test: src/engine.c src/engine.h src/packet.c tests/engine_test.c
 	@mkdir -p build
 	$(CC) $(CFLAGS) -Isrc -std=c11 -fsanitize=address,undefined src/engine.c src/packet.c tests/engine_test.c -o $@
 
-test: build/packet_test build/bridge_test build/image_test build/document_test build/raster_test build/engine_test
+build/ica_test: tests/ica_test.m macos/ICADevice.m src/raster.c src/document.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -Isrc -Imacos -fobjc-arc -fsanitize=address,undefined tests/ica_test.m src/raster.c src/document.c -framework Foundation -framework ICADevices -framework ImageCaptureCore -framework ImageIO -framework CoreGraphics -framework IOKit -o $@
+
+test: build/packet_test build/bridge_test build/image_test build/document_test build/raster_test build/engine_test build/ica_test
 	./build/packet_test
 	./build/bridge_test
 	./build/image_test
 	./build/document_test
 	./build/raster_test
 	./build/engine_test
+	./build/ica_test
 
 analyze:
 	$(CC) --analyze -fobjc-arc -mmacosx-version-min=14.0 src/main.m src/usb.m src/bridge.m src/packet.c src/authorize.m src/capture.m src/image.m src/document.c -Xanalyzer -analyzer-output=text -Xanalyzer -analyzer-werror

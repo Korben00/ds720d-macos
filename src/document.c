@@ -137,7 +137,8 @@ bool ds_document_clean(const uint8_t *rgb,size_t w,size_t h,struct ds_document *
     // Bilinear white-field interpolation avoids rectangular seams between tiles.
     for(size_t y=0;y<out->height;y++)for(size_t x=0;x<out->width;x++) {
         double fx=((double)x+0.5)/TILE-0.5,fy=((double)y+0.5)/TILE-0.5;
-        if(fx<0)fx=0;if(fy<0)fy=0;
+        if(fx<0)fx=0;
+        if(fy<0)fy=0;
         size_t x0=(size_t)fx,y0=(size_t)fy;
         if(x0>=nx-1){x0=nx-1;fx=(double)x0;}
         if(y0>=ny-1){y0=ny-1;fy=(double)y0;}

@@ -81,7 +81,8 @@ static bool image_block(struct ds_engine *e,uint8_t *buffer,size_t *length,bool 
     do {
         if(!read_channel(e,2,metadata,24))return false;
         for(unsigned i=0;i<6;i++)w[i]=ds_read_le32(metadata+4*i);
-        if(w[0] && !(w[0]==1 && !w[5]))break;pause_poll();
+        if(w[0] && !(w[0]==1 && !w[5]))break;
+        pause_poll();
     }while(now()<deadline);
     uint64_t size=(uint64_t)w[3]*w[4];
     if((w[0]!=1 && w[0]!=3) || size>requested || (size && (w[3]!=DS_NATIVE_WIDTH || w[4]%3)) || (!size && w[0]!=3) || (w[5]&3) || w[5]>UINT32_MAX-size)return fail(e,"Invalid scanner image metadata.");
@@ -110,7 +111,8 @@ bool ds_engine_capture(struct ds_engine *e,uint8_t **raw,size_t *length){
     uint8_t window[79],setup[10]={0x24};ds_native_window(window);setup[8]=sizeof window;
     if(!scanner(e,setup,NULL,0,window,sizeof window) || !simple(e,0x16))goto done;
     reserved=true;uint8_t start[10]={0x1b,0,0,0,0,0xc0};
-    if(!scanner(e,start,NULL,0,NULL,0))goto done;started=true;
+    if(!scanner(e,start,NULL,0,NULL,0))goto done;
+    started=true;
     for(unsigned blocks=0;blocks<256;blocks++) {
         uint8_t block[DS_NATIVE_BPL*DS_STRIPE_ROWS];size_t size=0;bool end=false;
         if(!image_block(e,block,&size,&end))goto done;

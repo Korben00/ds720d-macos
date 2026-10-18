@@ -128,8 +128,14 @@ static NSString *saveImage(DSScannerState *s,struct ds_document *page){
     CGColorSpaceRef space=CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     CGDataProviderRef provider=CGDataProviderCreateWithData(NULL,page->pixels,page->width*page->height*3,NULL);
     CGImageRef image=CGImageCreate(page->width,page->height,8,24,page->width*3,space,(CGBitmapInfo)kCGImageAlphaNone,provider,NULL,false,kCGRenderingIntentDefault);
-    CGImageDestinationRef destination=image?CGImageDestinationCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path],(__bridge CFStringRef)s.format,1,NULL):NULL;
+    NSURL *url=[NSURL fileURLWithPath:path];
+    CGImageDestinationRef destination=image && ![s.format isEqual:@"com.adobe.pdf"]?CGImageDestinationCreateWithURL((__bridge CFURLRef)url,(__bridge CFStringRef)s.format,1,NULL):NULL;
     BOOL ok=NO;
+    if(image && [s.format isEqual:@"com.adobe.pdf"]) {
+        CGRect box=CGRectMake(0,0,page->width*72.0/300,page->height*72.0/300);
+        CGContextRef pdf=CGPDFContextCreateWithURL((__bridge CFURLRef)url,&box,NULL);
+        if(pdf){CGPDFContextBeginPage(pdf,NULL);CGContextDrawImage(pdf,box,image);CGPDFContextEndPage(pdf);CGPDFContextClose(pdf);CGContextRelease(pdf);ok=YES;}
+    }
     if(destination){CGImageDestinationAddImage(destination,image,(__bridge CFDictionaryRef)@{(__bridge NSString *)kCGImagePropertyDPIWidth:@300,(__bridge NSString *)kCGImagePropertyDPIHeight:@300});ok=CGImageDestinationFinalize(destination);CFRelease(destination);}
     if(image)CGImageRelease(image);CGDataProviderRelease(provider);CGColorSpaceRelease(space);
     if(!ok){unlink(path.fileSystemRepresentation);return nil;}return path;

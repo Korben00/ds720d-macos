@@ -53,7 +53,8 @@ int main(void){
     assert(ds_engine_identify(&e) && !f.motor && !f.locked && !f.stops);
     uint8_t *raw=NULL;size_t length=0;
     assert(ds_engine_capture(&e,&raw,&length));assert(length==DS_NATIVE_BPL*160 && f.stops==1 && f.releases==1 && !f.locked && !f.motor);
-    for(size_t i=0;i<length;i++)assert(raw[i]==(uint8_t)(0x100000+i));free(raw);
+    for(size_t i=0;i<length;i++)assert(raw[i]==(uint8_t)(0x100000+i));
+    free(raw);
     f=(struct firmware){.malformed=true};assert(!ds_engine_capture(&e,&raw,&length));assert(!raw && !length && f.stops==1 && f.releases==1 && !f.motor && !f.locked);
     f=(struct firmware){.calibrate=true};assert(!ds_engine_capture(&e,&raw,&length));assert(!f.motor && !f.stops && !f.releases && !f.locked);
     f=(struct firmware){.cancel=true};assert(!ds_engine_capture(&e,&raw,&length));assert(f.transactions==0);

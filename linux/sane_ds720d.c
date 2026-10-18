@@ -44,7 +44,8 @@ SANE_Status sane_open(SANE_String_Const name,SANE_Handle *out){
 void sane_close(SANE_Handle h){if(!valid(h))return;atomic_store(&opened->cancelled,true);if(opened->acquiring)return;clear_pages(opened);free(opened);opened=NULL;}
 const SANE_Option_Descriptor *sane_get_option_descriptor(SANE_Handle h,SANE_Int option){return valid(h) && option>=0 && option<OPTION_COUNT?options+option:NULL;}
 SANE_Status sane_control_option(SANE_Handle h,SANE_Int option,SANE_Action action,void *value,SANE_Int *info){
-    if(info)*info=0;if(!valid(h) || !value || option<0 || option>=OPTION_COUNT)return SANE_STATUS_INVAL;
+    if(info)*info=0;
+    if(!valid(h) || !value || option<0 || option>=OPTION_COUNT)return SANE_STATUS_INVAL;
     struct scanner *s=h;if(s->acquiring || s->reading)return SANE_STATUS_DEVICE_BUSY;
     if(action==SANE_ACTION_GET_VALUE){switch(option){case 0:*(SANE_Word *)value=OPTION_COUNT;break;case 1:strcpy(value,"Color");break;case 2:*(SANE_Word *)value=300;break;case 3:strcpy(value,"ADF Duplex");break;case 4:*(SANE_Word *)value=s->clean;break;}return SANE_STATUS_GOOD;}
     if(option!=4 || action!=SANE_ACTION_SET_VALUE)return SANE_STATUS_UNSUPPORTED;
@@ -61,7 +62,8 @@ struct acquisition {struct ds_io usb;struct scanner *scanner;};
 static int transfer(void *p,const uint8_t *cmd,size_t cmdn,uint8_t *in,size_t inn,const uint8_t *out,size_t outn){struct acquisition *a=p;return a->usb.command(a->usb.context,cmd,cmdn,in,inn,out,outn);}
 static bool cancelled(void *p){return atomic_load(&((struct acquisition *)p)->scanner->cancelled);}
 SANE_Status sane_start(SANE_Handle h){
-    if(!valid(h))return SANE_STATUS_INVAL;struct scanner *s=h;
+    if(!valid(h))return SANE_STATUS_INVAL;
+    struct scanner *s=h;
     if(s->acquiring || s->reading)return SANE_STATUS_DEVICE_BUSY;
     if(atomic_load(&s->cancelled)){clear_pages(s);atomic_store(&s->cancelled,false);}
     if(s->next==1 && s->pages[1].pixels){s->current=1;s->next=2;s->offset=0;s->reading=true;return SANE_STATUS_GOOD;}
@@ -78,7 +80,8 @@ SANE_Status sane_start(SANE_Handle h){
     s->current=0;s->next=1;s->offset=0;s->reading=true;return SANE_STATUS_GOOD;
 }
 SANE_Status sane_read(SANE_Handle h,SANE_Byte *data,SANE_Int maximum,SANE_Int *length){
-    if(length)*length=0;if(!valid(h) || !data || !length || maximum<=0)return SANE_STATUS_INVAL;
+    if(length)*length=0;
+    if(!valid(h) || !data || !length || maximum<=0)return SANE_STATUS_INVAL;
     struct scanner *s=h;if(atomic_load(&s->cancelled)){clear_pages(s);return SANE_STATUS_CANCELLED;}
     if(!s->reading)return SANE_STATUS_EOF;
     struct ds_document *page=s->pages+s->current;size_t total=page->width*page->height*3,remaining=total-s->offset;

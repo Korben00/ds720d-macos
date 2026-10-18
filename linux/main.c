@@ -21,7 +21,9 @@ static bool save(const char *path,struct ds_document *page){
         png_write_end(png,info);ok=true;
     }
     if(png)png_destroy_write_struct(&png,info?&info:NULL);
-    if(fclose(file))ok=false;if(!ok)unlink(path);return ok;
+    if(fclose(file))ok=false;
+    if(!ok)unlink(path);
+    return ok;
 }
 int main(int argc,char **argv){
     bool probe=argc==2 && !strcmp(argv[1],"probe");
