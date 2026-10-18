@@ -4,6 +4,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import "capture.h"
 #import "packet.h"
+#import "document.h"
 #include <math.h>
 
 static BOOL number(id value,uint64_t maximum,uint64_t *result) {
@@ -19,7 +20,7 @@ static int invalidCapture(void) {
 }
 
 static BOOL savePNG(NSString *path,NSData *pixels,size_t width) {
-    CGColorSpaceRef space=CGColorSpaceCreateDeviceRGB();
+    CGColorSpaceRef space=CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     CGDataProviderRef provider=CGDataProviderCreateWithCFData((__bridge CFDataRef)pixels);
     CGImageRef image=CGImageCreate(width,pixels.length/(width*3),8,24,width*3,space,
         (CGBitmapInfo)kCGImageAlphaNone,provider,NULL,false,kCGRenderingIntentDefault);
@@ -38,7 +39,7 @@ static BOOL savePNG(NSString *path,NSData *pixels,size_t width) {
     return success;
 }
 
-int ds_decode_capture(const char *path) {
+static int decode(const char *path,BOOL rawOutput) {
     NSString *file=@(path);
     NSDictionary *attributes=[NSFileManager.defaultManager attributesOfItemAtPath:file error:NULL];
     if(!attributes || [attributes fileSize]>128000000)return 1;
@@ -98,8 +99,24 @@ int ds_decode_capture(const char *path) {
     }
     if(!sides[0].length || !sides[1].length)return invalidCapture();
     NSString *base=[file stringByDeletingPathExtension];
-    NSString *front=[base stringByAppendingString:@"-front.png"],*back=[base stringByAppendingString:@"-back.png"];
-    if(!savePNG(front,sides[0],width) || !savePNG(back,sides[1],width))return 1;
-    printf("%s\n%s\nTransport complete; image quality requires visual verification.\n",front.fileSystemRepresentation,back.fileSystemRepresentation);
+    NSString *front=[base stringByAppendingString:rawOutput?@"-raw-front.png":@"-front.png"];
+    NSString *back=[base stringByAppendingString:rawOutput?@"-raw-back.png":@"-back.png"];
+    NSString *paths[2]={front,back};
+    for(unsigned side=0;side<2;side++) {
+        if(rawOutput) {
+            if(!savePNG(paths[side],sides[side],width))return 1;
+        } else {
+            struct ds_document document;
+            if(!ds_document_clean(sides[side].bytes,width,sides[side].length/(width*3),&document))return 1;
+            NSData *pixels=[NSData dataWithBytesNoCopy:document.pixels length:document.width*document.height*3 freeWhenDone:YES];
+            if(!savePNG(paths[side],pixels,document.width))return 1;
+            printf("%s: %zux%zu; crop origin %zu,%zu; paper normalization %s\n",
+                side?"Back":"Front",document.width,document.height,document.left,document.top,document.normalized?"applied":"skipped");
+        }
+    }
+    printf("%s\n%s\nRendering: %s. Transport complete; image quality requires visual verification.\n",front.fileSystemRepresentation,back.fileSystemRepresentation,rawOutput?"raw RGB":"document");
     return 0;
 }
+
+int ds_decode_capture(const char *path) { return decode(path,NO); }
+int ds_decode_capture_raw(const char *path) { return decode(path,YES); }

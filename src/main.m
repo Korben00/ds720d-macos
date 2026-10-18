@@ -157,6 +157,7 @@ int main(int argc, const char *argv[]) {
         if(argc==2 && !strcmp(argv[1],"inspect"))return ds_inspect();
         if(argc==2 && !strcmp(argv[1],"capture"))return ds_capture();
         if(argc==3 && !strcmp(argv[1],"decode"))return ds_decode_capture(argv[2]);
+        if(argc==4 && !strcmp(argv[1],"decode") && !strcmp(argv[3],"--raw"))return ds_decode_capture_raw(argv[2]);
         if (argc == 2 && strcmp(argv[1], "list") == 0) return listScanners();
         if (argc == 2 && strcmp(argv[1], "probe-scsi") == 0) return probeSCSI();
         if (argc == 2 && strcmp(argv[1], "probe-usb") == 0) return probeUSB();
@@ -185,7 +186,7 @@ int main(int argc, const char *argv[]) {
             return 0;
         }
         fprintf(stderr, "Usage: ds720d list | authorize-probe | authorize-inspect | authorize-scan\n"
-            "       ds720d decode CAPTURE.jsonl\n"
+            "       ds720d decode CAPTURE.jsonl [--raw]\n"
             "       ds720d probe | inspect | capture | probe-scsi | probe-usb\n");
         return 64;
     }

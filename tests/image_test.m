@@ -56,9 +56,9 @@ int main(void) {
         }
         NSUInteger frames=events.count-1;
         [events addObject:@{@"event":@"done",@"success":@YES,@"frames":@(frames),@"bytes":@(raw.length)}];
-        writeCapture(path,events);assert(ds_decode_capture(path.fileSystemRepresentation)==0);
-        checkPNG([directory stringByAppendingPathComponent:@"test-front.png"],0,240);
-        checkPNG([directory stringByAppendingPathComponent:@"test-back.png"],1,160);
+        writeCapture(path,events);assert(ds_decode_capture_raw(path.fileSystemRepresentation)==0);
+        checkPNG([directory stringByAppendingPathComponent:@"test-raw-front.png"],0,240);
+        checkPNG([directory stringByAppendingPathComponent:@"test-raw-back.png"],1,160);
 
         // The real firmware can finish with a separate, empty EOP frame.
         NSMutableArray *emptyEnd=[events mutableCopy];
@@ -68,7 +68,9 @@ int main(void) {
         emptyEnd[frames]=last;
         [emptyEnd insertObject:@{@"event":@"frame",@"words":@[@3,@0,@0,@0,@0,@0],@"status":@0,@"data":@""} atIndex:frames+1];
         emptyEnd[emptyEnd.count-1]=@{@"event":@"done",@"success":@YES,@"frames":@(frames+1),@"bytes":@(raw.length)};
-        writeCapture(path,emptyEnd);assert(ds_decode_capture(path.fileSystemRepresentation)==0);
+        writeCapture(path,emptyEnd);assert(ds_decode_capture_raw(path.fileSystemRepresentation)==0);
+        checkPNG([directory stringByAppendingPathComponent:@"test-raw-back.png"],1,160);
+        assert(ds_decode_capture(path.fileSystemRepresentation)==0);
         checkPNG([directory stringByAppendingPathComponent:@"test-back.png"],1,160);
 
         NSMutableArray *bad=[events mutableCopy];[bad removeLastObject];

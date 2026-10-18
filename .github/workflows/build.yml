@@ -16,7 +16,7 @@ jobs:
           persist-credentials: false
       - name: Build native executable
         run: make
-      - name: Test packet framing and firmware transactions
+      - name: Test transport, duplex decoding and document rendering
         run: make test
       - name: Analyze native source
         run: make analyze

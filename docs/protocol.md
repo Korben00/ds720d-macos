@@ -83,8 +83,10 @@ were checked against the real decoded images.
 One complete capture contained 94 data blocks and one empty end-of-page block:
 58,475,520 bytes, decoded to two 2592-by-3760 RGB PNGs at 300 dpi. Both sides
 contain legible text. No captured pixels or identifying document contents are
-included in these notes. Exposure, white point, cropping and exact page alignment
-are not yet validated. A separate channel-zero streaming experiment was invalid
+included in these notes. The decoder now applies optional document rendering:
+the same captured sheet was checked visually after paper cropping and local white
+balance. This does not establish calibrated color or exact page alignment.
+A separate channel-zero streaming experiment was invalid
 for this configuration and stopped a sheet before it had cleared the feed.
 
 ## Evidence
@@ -115,4 +117,6 @@ boundaries across differently sized frames, DPI metadata, both forms of end of
 page, and rejection of malformed or incomplete captures. Build, sanitizer tests
 and static analysis pass locally. The real-sheet test establishes a first duplex
 scan on one Apple Silicon Mac with firmware 0.27, not broad compatibility,
-recovery reliability or production image quality.
+recovery reliability or production image quality. Document-rendering tests also
+check uneven gray paper, a different rear brightness, thin dark and faint print,
+color retention, border removal and preservation of the original RGB input.

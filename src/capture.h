@@ -2,3 +2,4 @@
 int ds_capture(void);
 int ds_inspect(void);
 int ds_decode_capture(const char *path);
+int ds_decode_capture_raw(const char *path);

@@ -8,8 +8,10 @@ is Apple Silicon running macOS 27.0.1.
 Mac on 18 October 2026. Both faces contain legible text in 300 dpi RGB PNGs;
 the rear sensor's mirrored image is corrected during decoding. Native USB
 access, scanner identification and end-of-page detection worked on this device.
-The paper background is still gray, borders are retained, and color rendering
-needs further work. This is not a production scanning release.
+Document rendering now removes the dark scanner borders and balances the paper
+background independently on each face. The result has been checked visually on
+the captured sheet. Raw RGB remains available. This is not a production scanning
+release: recovery, distribution and wider hardware testing remain unfinished.
 
 ## Build and test
 
@@ -23,7 +25,8 @@ make analyze
 ```
 
 There are no third-party libraries to install. The program uses Apple's
-Foundation, IOKit, IOUSBHost, Security, ImageIO and CoreGraphics frameworks. The deployment target is macOS 14;
+Foundation, IOKit, IOUSBHost, Security, ImageIO and CoreGraphics frameworks.
+The deployment target is macOS 14;
 older macOS releases and Intel Macs have not been tested. A deployment target
 is not a hardware compatibility claim.
 
@@ -70,7 +73,21 @@ Capture requests native RGB at 300 dpi and reads image memory until the scanner
 reports end of page, with limits on time, frame count and total bytes. It saves
 the raw capture privately in `captures/`; decoding creates front and back PNGs.
 The prototype currently supports this one acquisition configuration only.
-It does not crop borders, normalize paper white or export PDF.
+The default decoder renders documents with automatic paper cropping and local
+white balance. It retains color and 300 dpi resolution without resampling.
+PDF export is not implemented.
+
+For photos, faint shading, colored paper or exact acquisition values, use raw
+rendering instead:
+
+```sh
+./build/ds720d decode /absolute/path/to/capture.jsonl --raw
+```
+
+This produces `-raw-front.png` and `-raw-back.png` without cropping or tone
+adjustment. Both modes retain the corrected rear orientation. Decoding never
+changes the original capture file and does not move the paper feed.
+See [document rendering](docs/document-rendering.md) for the algorithm and limits.
 
 `authorize-inspect` performs bounded diagnostics without starting the feed.
 The authorization helper is development-only and uses Apple's deprecated
@@ -95,8 +112,8 @@ for the distinction between observed facts and unverified behavior.
 
 ## Release requirements
 
-Readable duplex PNG acquisition has passed one real-sheet test. Repeated scans,
-color and white-level handling, cancellation, disconnection, missing paper and
-recovery still need validation. PDF output, signing/distribution and integration
+Readable duplex PNG acquisition and document cleanup have passed one real-sheet
+test. Repeated scans, calibrated color, cancellation, disconnection, missing paper
+and recovery still need validation. PDF output, signing/distribution and integration
 with macOS scanning applications remain future work. Scans, personal document
 data, vendor binaries and local research files are excluded from this repository.
