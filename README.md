@@ -19,7 +19,9 @@ ICA device detection and one complete 300 dpi RGB duplex acquisition have been
 verified without per-scan administrator prompts. The installer and DMG are
 Developer ID signed, notarized by Apple and stapled. Only USB preparation runs
 as root; acquisition and image processing run in the user's GUI session.
-Linux builds use libusb and SANE; Linux hardware scanning is unverified.
+Linux builds use libusb and SANE. One real 300 dpi RGB duplex scan has passed
+in an Ubuntu ARM64 Tart VM through USB/IP; two feed pauses were observed.
+Direct USB on a physical Linux host and Linux AMD64 hardware remain unverified.
 See [macOS installation and signing](docs/macos-installation.md) and
 [Linux installation](docs/linux.md) for current scope and build instructions.
 
@@ -127,5 +129,7 @@ Readable duplex PNG acquisition and document cleanup have passed one real-sheet
 test. Repeated scans, calibrated color, cancellation, disconnection, missing paper
 and recovery still need validation. Native ICA PNG output has passed a real duplex
 test on macOS 27.0.1 / Apple Silicon. Intel macOS and Linux AMD64/ARM64 have passed
-build and software tests; the physical Linux USB path remains unverified. Scans, personal document
-data, vendor binaries and local research files are excluded from this repository.
+build and software tests. Linux ARM64 SANE has also passed a real duplex scan
+through USB/IP in Tart; this does not validate direct USB on a Linux machine.
+Scans, personal document data, vendor binaries and local research files are
+excluded from this repository.

@@ -6,12 +6,51 @@ contains both sensors; the next SANE image returns the cached rear page without
 feeding another sheet. Each side is an independent RGB image (`last_frame=true`).
 Background cleanup is on by default and can be disabled for photographs/shading.
 
-The software tests simulate firmware and a SANE frontend. **A physical Linux
-scan has not yet been verified.** No Brother library is used. libusb and libpng
-are external system dependencies, with their own licenses.
+The software tests simulate firmware and a SANE frontend. **One real duplex
+scan has passed through SANE in an Ubuntu ARM64 Tart VM with USB/IP.** Direct
+USB on a physical Linux host remains unverified. No Brother library is used.
+libusb and libpng are external system dependencies, with their own licenses.
 
 CI also installs each amd64/arm64 package on Ubuntu 22.04 and checks that the
 real SANE dynamic loader initializes the backend. There is no USB scanner in CI.
+
+## Hardware validation: 18 October 2026
+
+The published `0.1.0-preview.3` ARM64 Debian package was installed in an Ubuntu
+24.04.5 Tart VM (Linux `7.0.0-38-generic`, SANE 1.2.1, libusb 1.0.27) on an
+Apple Silicon Mac running macOS 27.0.1. Package SHA-256:
+`7757fa192dedd0a114427b736af790f33bd60b790300b29d1e51b60dedafe2d6`.
+
+The VM used the real physical DS-720D through the Linux `vhci-hcd` USB/IP
+controller. Tart 2.28.2 has no physical USB passthrough; a temporary host-side
+adapter using the MIT `usbip` 0.9.0 library forwarded control/bulk transfers.
+Only `04f9:60e2` was exported, with loopback listeners and the Tart guest-agent
+channel carrying the bytes. The macOS scan engine did not perform acquisition.
+The guest-agent commands used a temporary Tart 2.41.1 client. This test adapter
+is not part of the Linux package.
+
+The packaged udev rule granted the `scanner` group access. The CLI identified
+the bridge and scanner successfully, and `scanimage -L` loaded the packaged
+SANE backend. Acquisition ran as the ordinary guest user, with membership in
+`scanner`, using:
+
+```sh
+scanimage -d ds720d:usb:04f9:60e2 --format=png \
+  --batch=page-%02d.png --batch-count=2 --verbose
+```
+
+One physical sheet pass produced two RGB PNGs: 2470×3481 and 2466×3483 pixels,
+both with 300 dpi metadata. SANE returned EOF for each image and exited with
+status 0; the second image came from the cached rear page. Both faces were
+visually checked for legible text, corrected orientation, paper cleanup and
+complete page content. Scanner identification also passed after the scan.
+The images and detailed logs contain private document data and stay local.
+
+Two feed pauses were observed during this roughly 52-second command. There
+was no scan failure or visible missing image band. The USB/IP relay is a
+possible throughput constraint, but the cause was not measured. Smooth feed,
+repeatability, direct Linux USB, AMD64 hardware and error recovery still need
+validation; this result does not establish those properties.
 
 ## Build
 
