@@ -15,13 +15,24 @@ CLI commands remain development diagnostics only and are not used by the GUI or
 ICA module.
 
 The service runs as root because IOUSBHost device capture requires root or a
-managed entitlement. Code signing by itself does not grant that entitlement.
-It exposes **ping, usb-probe, capture, cancel** only. The optional USB probe opens
-and closes the two bulk pipes without sending scanner commands or moving paper.
-Capture is fixed at 300 dpi RGB duplex
-for one `04f9:60e2` scanner, bounded by time, bytes and frame count. No client
-may supply CDBs, memory addresses, shell commands, executable paths or output paths.
-Cancellation applies only to the requesting connection. Only one capture can run.
+managed entitlement. It exposes **ping, prepare, release** only. Preparation
+captures exactly one `04f9:60e2` device, selects its configuration without kernel
+driver matching, then surrenders ownership without resetting USB. It never opens
+the mass-storage interface, sends scanner commands, receives image bytes or
+creates files. No client may supply CDBs, memory addresses, shell commands,
+executable paths or output paths. A connection-scoped lease prevents another
+client from reconfiguring an ongoing acquisition, expires after 180 seconds and
+is released on disconnect. Release cannot remove another connection's lease.
+
+The GUI/ICA client opens the bulk pipes and runs the fixed 300 dpi RGB duplex
+engine as the logged-in user, bounded by time, bytes and frame count.
+Cancellation is local to that client and keeps the service lease until scanner
+STOP/RELEASE cleanup finishes. This separation matters because macOS classifies
+the scanner's `08/06/50` interface as removable storage. TCC denied an interface
+open in the root daemon; an unprivileged pipe-only hardware probe succeeded.
+macOS may request removable-volume consent once for the GUI or ICA module.
+The signed bundles contain a usage description; the driver does not request
+Full Disk Access. Code signing and notarization do not replace privacy consent.
 
 Every incoming message is authenticated using its XPC audit token through
 `SecCodeCreateWithXPCMessage` and a Developer ID requirement with the helper's
@@ -41,8 +52,9 @@ per-scan administrator authorization. An actual scan through ICA is still pendin
 `DS720DDoctor` checks detection/session readiness without scanning. Image Capture
 session opening and functional-unit parameter delivery are asynchronous; the
 diagnostic waits for readiness and resolutions before inspecting the feeder.
-`DS720DDoctor usb-probe` additionally verifies access through the installed root
-service without moving paper. USB ownership is surrendered without a device
+`DS720DDoctor usb-probe` additionally prepares the connection through the root
+service and opens/closes the two bulk pipes as the user, without moving paper.
+The GUI's File menu provides the same check. USB ownership is surrendered without a device
 reset, so closing a transfer does not disconnect the ICA client. New interfaces
 created during configuration are re-enumerated for at most three seconds.
 `make build/DS720DICAScan-universal` builds an explicit hardware test client.
@@ -93,6 +105,8 @@ sudo rm -r '/Applications/DS-720D Scanner.app'
 User scan files are not removed.
 
 Apple references: [device module launch behavior](https://developer.apple.com/library/archive/qa/qa1946/_index.html),
+[removable-volume consent](https://developer.apple.com/documentation/bundleresources/information-property-list/nsremovablevolumesusagedescription),
+[Apple DTS discussion of helper and GUI consent](https://developer.apple.com/forums/thread/802650),
 [official VirtualScanner SDK example](https://developer.apple.com/library/archive/samplecode/VirtualScanner/VirtualScanner.zip),
 and the public ICADevices, IOUSBHost, Security and XPC headers in the current SDK.
 The module is an original implementation; no Apple sample code is incorporated.

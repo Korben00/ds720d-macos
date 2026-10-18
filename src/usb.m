@@ -14,21 +14,11 @@ static void setError(NSError **target, NSError *value) {
     if (target) *target = value;
 }
 
-@implementation DSUSB {
-    IOUSBHostDevice *_device;
-    IOUSBHostInterface *_interface;
-    IOUSBHostPipe *_input;
-    IOUSBHostPipe *_output;
-    uint32_t _tag;
-    BOOL _poisoned;
-}
-
-+ (instancetype)openScanner:(NSError **)error {
+static IOUSBHostDevice *captureDevice(NSError **error) {
     if (geteuid() != 0) {
         setError(error, failure(13, @"USB capture requires administrator access. Run this command with sudo."));
         return nil;
     }
-    DSUSB *transport = [DSUSB new];
     CFMutableDictionaryRef match = IOServiceMatching("IOUSBHostDevice");
     NSDictionary *identity = @{@"idVendor": @0x04f9, @"idProduct": @0x60e2};
     CFDictionarySetValue(match, CFSTR("IOPropertyMatch"), (__bridge CFDictionaryRef)identity);
@@ -44,30 +34,69 @@ static void setError(NSError **target, NSError *value) {
         setError(error, failure(2, @"Connect exactly one Brother DS-720D."));
         return nil;
     }
-    transport->_device = [[IOUSBHostDevice alloc] initWithIOService:service
+    IOUSBHostDevice *device = [[IOUSBHostDevice alloc] initWithIOService:service
         options:IOUSBHostObjectInitOptionsDeviceCapture queue:nil error:error interestHandler:nil];
     IOObjectRelease(service);
-    if (!transport->_device) return nil;
+    if (!device) return nil;
     const IOUSBConfigurationDescriptor *config =
-        [transport->_device configurationDescriptorWithIndex:0 error:error];
-    if (!config) return nil;
+        [device configurationDescriptorWithIndex:0 error:error];
+    if (!config) { [device destroyWithOptions:IOUSBHostObjectDestroyOptionsDeviceSurrender]; return nil; }
     // Capture prevents the storage driver from reclaiming the scanner until close.
-    if (![transport->_device configureWithValue:config->bConfigurationValue matchInterfaces:NO error:error]) return nil;
+    if (![device configureWithValue:config->bConfigurationValue matchInterfaces:NO error:error]) {
+        [device destroyWithOptions:IOUSBHostObjectDestroyOptionsDeviceSurrender]; return nil;
+    }
+    return device;
+}
+
+@implementation DSUSB {
+    IOUSBHostDevice *_device;
+    IOUSBHostInterface *_interface;
+    IOUSBHostPipe *_input;
+    IOUSBHostPipe *_output;
+    uint32_t _tag;
+    BOOL _poisoned;
+}
+
++ (BOOL)prepareScanner:(NSError **)error {
+    IOUSBHostDevice *device=captureDevice(error);
+    if(!device)return NO;
+    [device destroyWithOptions:IOUSBHostObjectDestroyOptionsDeviceSurrender];
+    return YES;
+}
+
++ (instancetype)openScanner:(NSError **)error {
+    DSUSB *transport=[DSUSB new];
+    // Only preparation needs root. The GUI-session client opens the interface
+    // so macOS can display and remember scoped removable-volume consent.
+    if(geteuid()==0) {
+        transport->_device=captureDevice(error);
+        if(!transport->_device)return nil;
+    }
+    io_iterator_t iterator=IO_OBJECT_NULL;
+    io_service_t service=IO_OBJECT_NULL;
+    kern_return_t kr;
     // Reconfiguration terminates the previous interfaces. Enumerate afresh on
     // each bounded retry instead of stopping at a disappearing registry entry.
     NSError *interfaceError = nil;
     NSTimeInterval deadline = NSProcessInfo.processInfo.systemUptime + 3;
     do {
-        kr = IORegistryEntryCreateIterator(transport->_device.ioService, kIOServicePlane,
-            kIORegistryIterateRecursively, &iterator);
+        CFMutableDictionaryRef match=IOServiceMatching("IOUSBHostInterface");
+        NSDictionary *identity=@{@"idVendor":@0x04f9,@"idProduct":@0x60e2,
+            @"bInterfaceNumber":@0,@"bConfigurationValue":@1,
+            @"bInterfaceClass":@8,@"bInterfaceSubClass":@6,@"bInterfaceProtocol":@0x50};
+        CFDictionarySetValue(match,CFSTR("IOPropertyMatch"),(__bridge CFDictionaryRef)identity);
+        kr = IOServiceGetMatchingServices(kIOMainPortDefault,match,&iterator);
         if (kr != KERN_SUCCESS) { setError(error, failure(kr, @"Cannot enumerate scanner interfaces.")); return nil; }
-        while ((service = IOIteratorNext(iterator))) {
-            if (IOObjectConformsTo(service, "IOUSBHostInterface")) {
-                transport->_interface = [[IOUSBHostInterface alloc] initWithIOService:service
-                    options:IOUSBHostObjectInitOptionsNone queue:nil error:&interfaceError interestHandler:nil];
-            }
+        service=IOIteratorNext(iterator);
+        io_service_t extra=IOIteratorNext(iterator);
+        if(extra) {
+            IOObjectRelease(service);IOObjectRelease(extra);IOObjectRelease(iterator);
+            setError(error,failure(2,@"Connect exactly one Brother DS-720D."));return nil;
+        }
+        if(service) {
+            transport->_interface = [[IOUSBHostInterface alloc] initWithIOService:service
+                options:IOUSBHostObjectInitOptionsNone queue:nil error:&interfaceError interestHandler:nil];
             IOObjectRelease(service);
-            if (transport->_interface) break;
         }
         IOObjectRelease(iterator);
         if (transport->_interface) break;
@@ -102,7 +131,7 @@ static void setError(NSError **target, NSError *value) {
 
 - (NSData *)executeCDB:(NSData *)cdb inputLength:(NSUInteger)inputLength
                 output:(NSData *)output error:(NSError **)error {
-    if (_poisoned || !_device) { setError(error, failure(6, @"USB session is closed or requires reopening.")); return nil; }
+    if (_poisoned || !_interface) { setError(error, failure(6, @"USB session is closed or requires reopening.")); return nil; }
     NSUInteger length = inputLength ? inputLength : output.length;
     if (length > 65536 || (inputLength && output.length) || cdb.length == 0 || cdb.length > 16) {
         setError(error, failure(7, @"Invalid USB command length or direction.")); return nil;

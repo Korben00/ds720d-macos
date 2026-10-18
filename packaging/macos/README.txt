@@ -3,7 +3,8 @@ DS-720D Scanner — version expérimentale
 Ouvre « Installer DS-720D.pkg ». Une autorisation administrateur est demandée
 à l’installation. Le paquet ajoute l’application, le module Transfert d’images
 et un service USB démarré à la demande. Les scans ne demandent plus de mot de
-passe administrateur. Branche exactement un Brother DS-720D et insère une
+passe administrateur. macOS peut demander une fois l’accès aux supports amovibles
+pour communiquer avec l’interface USB du scanner. Branche exactement un Brother DS-720D et insère une
 feuille. L’application produit deux PNG à 300 dpi ; ferme puis rouvre Transfert
 d’images pour y retrouver aussi le scanner.
 
@@ -20,7 +21,8 @@ Les composants installés sont :
 
 Le service accepte uniquement les clients du projet signés avec le même compte
 Developer ID. Aucune commande système, chemin de fichier ou commande USB
-arbitraire n’est accepté. Le traitement des images reste dans ta session.
+arbitraire n’est accepté. Il prépare uniquement la connexion USB. L’acquisition
+et le traitement des images restent dans ta session.
 
 Le moteur a produit un scan recto verso réel sur Apple Silicon. L’intégration
 Transfert d’images, les erreurs de papier, la déconnexion et l’annulation

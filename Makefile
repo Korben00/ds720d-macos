@@ -2,6 +2,8 @@ CC = xcrun clang
 CFLAGS = -Wall -Wextra -Werror -O2 -g -mmacosx-version-min=14.0
 FRAMEWORKS = -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -framework ImageIO -framework CoreGraphics
 MAC_SOURCES = src/main.m src/usb.m src/packet.c src/bridge.m src/authorize.m src/capture.m src/image.m src/document.c
+MAC_ACQUISITION = src/usb.m src/bridge.m src/capture.m src/packet.c
+MAC_ACQUISITION_HEADERS = src/usb.h src/bridge.h src/capture.h src/packet.h src/transport.h
 
 .PHONY: all clean test analyze
 all: build/ds720d
@@ -15,21 +17,21 @@ build/ds720d-universal: $(MAC_SOURCES) src/authorize.h src/capture.h src/documen
 	@mkdir -p build
 	$(CC) $(CFLAGS) -arch arm64 -arch x86_64 -fobjc-arc $(MAC_SOURCES) $(FRAMEWORKS) -o $@
 
-build/DS720DScanner-universal: macos/App.m macos/ServiceClient.m macos/ServiceClient.h macos/ServiceIdentity.h
+build/DS720DScanner-universal: macos/App.m macos/ServiceClient.m macos/ServiceClient.h macos/ServiceIdentity.h $(MAC_ACQUISITION) $(MAC_ACQUISITION_HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/App.m macos/ServiceClient.m -framework AppKit -framework UniformTypeIdentifiers -framework Security -o $@
+	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/App.m macos/ServiceClient.m $(MAC_ACQUISITION) -framework AppKit -framework UniformTypeIdentifiers -framework Security -framework IOKit -framework IOUSBHost -o $@
 
-build/DS720DICA-universal: macos/ICADevice.m macos/ServiceClient.m macos/ServiceClient.h macos/ServiceIdentity.h src/raster.c src/raster.h src/document.c
+build/DS720DICA-universal: macos/ICADevice.m macos/ServiceClient.m macos/ServiceClient.h macos/ServiceIdentity.h src/raster.c src/raster.h src/document.c $(MAC_ACQUISITION) $(MAC_ACQUISITION_HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/ICADevice.m macos/ServiceClient.m src/raster.c src/document.c -framework Foundation -framework ICADevices -framework ImageCaptureCore -framework ImageIO -framework CoreGraphics -framework IOKit -framework Security -o $@
+	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/ICADevice.m macos/ServiceClient.m $(MAC_ACQUISITION) src/raster.c src/document.c -framework Foundation -framework ICADevices -framework ImageCaptureCore -framework ImageIO -framework CoreGraphics -framework IOKit -framework IOUSBHost -framework Security -o $@
 
-build/DS720DUSBService-universal: macos/USBService.m macos/ServiceIdentity.h src/capture.m src/bridge.m src/usb.m src/packet.c
+build/DS720DUSBService-universal: macos/USBService.m macos/ServiceIdentity.h src/usb.m src/usb.h src/packet.c src/packet.h
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/USBService.m src/usb.m src/bridge.m src/capture.m src/packet.c -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -o $@
+	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/USBService.m src/usb.m src/packet.c -framework Foundation -framework IOKit -framework IOUSBHost -framework Security -o $@
 
-build/DS720DDoctor-universal: macos/Doctor.m macos/ServiceClient.m macos/ServiceIdentity.h macos/ServiceClient.h
+build/DS720DDoctor-universal: macos/Doctor.m macos/ServiceClient.m macos/ServiceIdentity.h macos/ServiceClient.h $(MAC_ACQUISITION) $(MAC_ACQUISITION_HEADERS)
 	@mkdir -p build
-	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/Doctor.m macos/ServiceClient.m -framework Foundation -framework ImageCaptureCore -framework Security -o $@
+	$(CC) $(CFLAGS) -Isrc -Imacos -arch arm64 -arch x86_64 -fobjc-arc macos/Doctor.m macos/ServiceClient.m $(MAC_ACQUISITION) -framework Foundation -framework ImageCaptureCore -framework Security -framework IOKit -framework IOUSBHost -o $@
 
 build/DS720DICAScan-universal: macos/ICAScan.m
 	@mkdir -p build

@@ -41,6 +41,8 @@ static NSTextField *label(NSString *text,CGFloat size,BOOL bold) {
     NSMenu *fileMenu=[[NSMenu alloc] initWithTitle:@"Fichier"];
     NSMenuItem *import=[fileMenu addItemWithTitle:@"Retraiter une capture…" action:@selector(importCapture:) keyEquivalent:@"o"];
     import.target=self;fileItem.submenu=fileMenu;
+    NSMenuItem *check=[fileMenu addItemWithTitle:@"Vérifier l’accès au scanner" action:@selector(checkUSB:) keyEquivalent:@""];
+    check.target=self;
     NSApp.mainMenu=menu;
 
     self.window=[[NSWindow alloc] initWithContentRect:NSMakeRect(0,0,680,450)
@@ -124,6 +126,15 @@ static NSTextField *label(NSString *text,CGFloat size,BOOL bold) {
 - (void)fail:(NSString *)detail {
     NSString *last=detail.length>800?[detail substringFromIndex:detail.length-800]:detail;
     dispatch_async(dispatch_get_main_queue(),^{[self setWorking:NO message:last];});
+}
+- (void)checkUSB:(id)sender {
+    (void)sender;if(self.busy)return;
+    [self setWorking:YES message:@"Vérification de l’accès USB, sans déplacer la feuille…"];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^{@autoreleasepool {
+        NSError *error=nil;BOOL ok=ds_service_probe(&error);
+        NSString *message=ok?@"Le scanner est accessible. Tu peux numériser une feuille.":error.localizedDescription?:@"L’accès au scanner a été refusé. Autorise l’accès aux supports amovibles si macOS le demande.";
+        dispatch_async(dispatch_get_main_queue(),^{[self setWorking:NO message:message];});
+    }});
 }
 - (void)scan:(id)sender {
     (void)sender;if(self.busy)return;

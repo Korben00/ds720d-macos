@@ -3,29 +3,38 @@
 #import "ServiceIdentity.h"
 #import <xpc/xpc.h>
 #import "packet.h"
+#import "usb.h"
+#import "capture.h"
 #include <fcntl.h>
 #include <unistd.h>
 
-static xpc_connection_t active;
+@interface DSClientJob : NSObject
+@property(atomic) BOOL cancelled;
+@property(strong) xpc_connection_t connection;
+@end
+@implementation DSClientJob
+@end
+
+static DSClientJob *active;
 static NSObject *lock;
 
-static xpc_object_t request(const char *operation,NSError **error) {
-    BOOL capture=!strcmp(operation,"capture");
+static void initializeLock(void) {
     static dispatch_once_t once;dispatch_once(&once,^{lock=[NSObject new];});
+}
+static xpc_object_t request(const char *operation,DSClientJob *job,NSError **error) {
     xpc_connection_t connection=xpc_connection_create_mach_service(DS_SERVICE,NULL,XPC_CONNECTION_MACH_SERVICE_PRIVILEGED);
     NSString *rule=ds_requirement(ds_signing_team(),YES);
     if(!rule || xpc_connection_set_peer_code_signing_requirement(connection,rule.UTF8String))return nil;
-    xpc_connection_set_event_handler(connection,^(xpc_object_t event){(void)event;});
-    @synchronized(lock){if(capture)active=connection;}
+    xpc_connection_set_event_handler(connection,^(xpc_object_t event){if(xpc_get_type(event)==XPC_TYPE_ERROR)job.cancelled=YES;});
+    job.connection=connection;
     xpc_connection_resume(connection);
     xpc_object_t message=xpc_dictionary_create(NULL,NULL,0);
     xpc_dictionary_set_string(message,"operation",operation);
     dispatch_semaphore_t done=dispatch_semaphore_create(0);
     __block xpc_object_t reply=nil;
     xpc_connection_send_message_with_reply(connection,message,dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^(xpc_object_t item){reply=item;dispatch_semaphore_signal(done);});
-    BOOL timeout=dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,(capture?210:10)*NSEC_PER_SEC))!=0;
-    @synchronized(lock){if(capture && active==connection)active=nil;}
-    xpc_connection_cancel(connection);
+    BOOL timeout=dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,10*NSEC_PER_SEC))!=0;
+    if(!job)xpc_connection_cancel(connection);
     if(timeout || !reply || xpc_get_type(reply)!=XPC_TYPE_DICTIONARY || xpc_dictionary_get_string(reply,"error")) {
         const char *text=reply && xpc_get_type(reply)==XPC_TYPE_DICTIONARY?xpc_dictionary_get_string(reply,"error"):NULL;
         if(error)*error=[NSError errorWithDomain:@"DS720D.Service" code:1 userInfo:@{NSLocalizedDescriptionKey:text?@(text):@"Le service du pilote est indisponible. Installe le paquet DS-720D Scanner puis réessaie."}];
@@ -33,22 +42,53 @@ static xpc_object_t request(const char *operation,NSError **error) {
     }
     return reply;
 }
-NSData *ds_service_capture(NSError **error) {
-    xpc_object_t reply=request("capture",error);if(!reply)return nil;
-    size_t length=0;const void *bytes=xpc_dictionary_get_data(reply,"pixels",&length);
-    if(!bytes || !length || length>80000000 || length%DS_NATIVE_BPL) {
-        if(error)*error=[NSError errorWithDomain:@"DS720D.Service" code:2 userInfo:@{NSLocalizedDescriptionKey:@"Invalid image from scanner service."}];return nil;
+static void finish(DSClientJob *job) {
+    if(job.connection) {
+        xpc_object_t message=xpc_dictionary_create(NULL,NULL,0);
+        xpc_dictionary_set_string(message,"operation","release");
+        dispatch_semaphore_t done=dispatch_semaphore_create(0);
+        xpc_connection_send_message_with_reply(job.connection,message,dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0),^(xpc_object_t reply){(void)reply;dispatch_semaphore_signal(done);});
+        dispatch_semaphore_wait(done,dispatch_time(DISPATCH_TIME_NOW,2*NSEC_PER_SEC));
+        xpc_connection_cancel(job.connection);job.connection=nil;
     }
-    return [NSData dataWithBytes:bytes length:length];
+    @synchronized(lock){if(active==job)active=nil;}
 }
-BOOL ds_service_ping(NSError **error){return request("ping",error)!=nil;}
+static DSClientJob *prepare(NSError **error) {
+    initializeLock();DSClientJob *job=[DSClientJob new];
+    @synchronized(lock) {
+        if(active){if(error)*error=[NSError errorWithDomain:@"DS720D.Service" code:3 userInfo:@{NSLocalizedDescriptionKey:@"Scanner busy."}];return nil;}
+        active=job;
+    }
+    xpc_object_t reply=request("prepare",job,error);
+    if(!reply || !xpc_dictionary_get_bool(reply,"prepared") || job.cancelled){finish(job);return nil;}
+    return job;
+}
+NSData *ds_service_capture(NSError **error) {
+    DSClientJob *job=prepare(error);if(!job)return nil;
+    NSMutableData *raw=[NSMutableData data];__block NSString *failure=nil;
+    int status=ds_acquire(^(NSDictionary *item){
+        if([item[@"event"] isEqual:@"frame"]) {
+            NSData *part=[[NSData alloc] initWithBase64EncodedString:item[@"data"] options:0];
+            if(!part || raw.length+part.length>80000000){failure=@"Image exceeds acquisition bounds.";job.cancelled=YES;}
+            else [raw appendData:part];
+        } else if([item[@"event"] isEqual:@"error"])failure=item[@"message"];
+    },^{return job.cancelled;});
+    BOOL ok=!status && !failure && !job.cancelled && raw.length && raw.length%DS_NATIVE_BPL==0;
+    finish(job);
+    if(!ok) {
+        if(error)*error=[NSError errorWithDomain:@"DS720D.Capture" code:1 userInfo:@{NSLocalizedDescriptionKey:failure?:@"Acquisition interrupted or incomplete."}];return nil;
+    }
+    return raw;
+}
+BOOL ds_service_ping(NSError **error){return request("ping",nil,error)!=nil;}
 BOOL ds_service_probe(NSError **error){
-    xpc_object_t reply=request("usb-probe",error);
-    return reply && xpc_dictionary_get_bool(reply,"usb-ready");
+    DSClientJob *job=prepare(error);if(!job)return NO;
+    DSUSB *usb=job.cancelled?nil:[DSUSB openScanner:error];BOOL ok=usb!=nil;
+    [usb close];finish(job);return ok;
 }
 void ds_service_cancel(void) {
     if(!lock)return;
-    @synchronized(lock){if(active){xpc_object_t message=xpc_dictionary_create(NULL,NULL,0);xpc_dictionary_set_string(message,"operation","cancel");xpc_connection_send_message(active,message);}}
+    @synchronized(lock){active.cancelled=YES;}
 }
 
 NSURL *ds_service_capture_file(NSURL *folder,NSError **error) {

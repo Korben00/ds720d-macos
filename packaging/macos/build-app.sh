@@ -31,6 +31,7 @@ cat > "$DS_APP/Contents/Info.plist" <<PLIST
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>
+<key>NSRemovableVolumesUsageDescription</key><string>Autorise la communication USB avec ton scanner Brother DS-720D pour lire les deux faces de la feuille.</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSHumanReadableCopyright</key><string>2026 Korben · MIT License</string>
 </dict></plist>
@@ -67,6 +68,7 @@ cat > "$DS_ICA/Contents/Info.plist" <<PLIST
 <key>CFBundleVersion</key><string>$DS_BUILD</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
+<key>NSRemovableVolumesUsageDescription</key><string>Autorise la communication USB avec ton scanner Brother DS-720D pour lire les deux faces de la feuille.</string>
 </dict></plist>
 PLIST
 cp "$DS_ROOT/build/DS720DUSBService-universal" "$DS_TEMP/info.korben.ds720d.usb"

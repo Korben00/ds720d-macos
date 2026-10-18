@@ -2,6 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>info.korben.ds720d.usb</string>
+<key>AssociatedBundleIdentifiers</key><string>info.korben.ds720d</string>
 <key>ProgramArguments</key><array><string>/Library/PrivilegedHelperTools/info.korben.ds720d.usb</string></array>
 <key>MachServices</key><dict><key>info.korben.ds720d.usb</key><true/></dict>
 <key>ProcessType</key><string>Interactive</string>
