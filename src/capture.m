@@ -123,4 +123,3 @@ int ds_capture(void) {
     }
     return success?0:1;
 }
-
